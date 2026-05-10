@@ -1,0 +1,1 @@
+Whisper Model:47000 Tokens

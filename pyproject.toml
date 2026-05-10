@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whisper-dictate"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "faster-whisper",
+    "sounddevice",
+    "numpy",
+    "keyboard",
+    "PyQt6",
+]
+
+[project.scripts]
+whisper-dictate = "whisper_dictate.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["whisper_dictate*"]
