@@ -17,6 +17,9 @@ dependencies = [
 [project.scripts]
 whisper-dictate = "whisper_dictate.app:main"
 
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-qt>=4"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["whisper_dictate*"]

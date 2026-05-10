@@ -18,6 +18,7 @@ class HotkeyManager(QObject):
         self._hook_release = None
 
     def start(self) -> None:
+        self.stop()
         self._hook_press = keyboard.on_press_key(self._trigger_key, self._on_press)
         self._hook_release = keyboard.on_release_key(self._trigger_key, self._on_release)
 

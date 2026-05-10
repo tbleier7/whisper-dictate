@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout
-from PyQt6.QtCore import Qt, QPoint, QTimer
+from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush
 
 from .config import Config
@@ -62,6 +62,8 @@ class _ClickableLabel(QLabel):
 
 
 class FloatingWindow(QWidget):
+    became_idle = pyqtSignal()
+
     def __init__(self, config: Config) -> None:
         super().__init__()
         self._config = config
@@ -71,7 +73,7 @@ class FloatingWindow(QWidget):
 
         self._flash_timer = QTimer(self)
         self._flash_timer.setSingleShot(True)
-        self._flash_timer.timeout.connect(lambda: self._apply_state(AppState.IDLE))
+        self._flash_timer.timeout.connect(self._on_flash_done)
 
         self._setup_ui()
         self._apply_state(AppState.LOADING)
@@ -130,6 +132,10 @@ class FloatingWindow(QWidget):
             self._bg_color = QColor("#6b1a1a")
             self._flash_timer.start(500)
         self.update()
+
+    def _on_flash_done(self) -> None:
+        self._apply_state(AppState.IDLE)
+        self.became_idle.emit()
 
     def _cycle_language(self) -> None:
         if self._state != AppState.IDLE:

@@ -28,6 +28,7 @@ class _Controller(QObject):
         self._engine.model_ready.connect(self._on_model_ready)
         self._engine.transcription_done.connect(self._on_transcription_done)
         self._engine.transcription_failed.connect(self._on_transcription_failed)
+        window.became_idle.connect(self._on_became_idle)
 
         # Window starts in LOADING; hotkey enabled only after model is ready
         self._engine.start_loading()
@@ -45,26 +46,24 @@ class _Controller(QObject):
     def _on_recording_stopped(self) -> None:
         if self._window.state != AppState.RECORDING:
             return
+        self._hotkey.stop()
         audio = self._recorder.stop()
         self._window.set_state(AppState.LOADING)
         self._engine.transcribe(audio, self._config.active_language)
 
     def _on_transcription_done(self, text: str) -> None:
         self._window.set_state(AppState.SUCCESS)
-        # Delay lets any held modifier keys fully release before SendInput events fire.
-        # Stop hotkey hooks during injection so synthetic keystrokes (e.g. space in the
-        # transcribed text) cannot re-trigger the recording hotkey while Ctrl+Alt are
-        # still physically held — which would cause a spurious second transcription cycle.
-        def _inject() -> None:
-            self._hotkey.stop()
-            try:
-                keyboard.write(text, delay=0)
-            finally:
-                self._hotkey.start()
-        QTimer.singleShot(100, _inject)
+        # 100 ms lets held modifier keys release before SendInput fires.
+        # Hotkey is already stopped (from _on_recording_stopped); it is
+        # restarted only when the window reaches IDLE via _on_became_idle,
+        # so synthetic keystrokes in the text can never re-trigger recording.
+        QTimer.singleShot(100, lambda: keyboard.write(text, delay=0))
 
     def _on_transcription_failed(self) -> None:
         self._window.set_state(AppState.FAILURE)
+
+    def _on_became_idle(self) -> None:
+        self._hotkey.start()
 
     def cleanup(self) -> None:
         self._hotkey.stop()
