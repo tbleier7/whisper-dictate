@@ -17,7 +17,7 @@ Single entry point for all code changes. Every change follows this workflow top 
 ## Phase 2: Outer loop
 
 - Work through one acceptance criterion at a time, starting with what you see as the most fitting regarding blockers and dependencies.
-- Write an acceptance test at the highest level that actually exercises the criterion — widget test for single-screen UI, integration test for cross-screen flows, unit/repository test for pure logic. Skip only when the change has no observable behavior (rename, deps, CI, docs) and the existing suite still covers the affected area
+- Write an acceptance test at the highest level that actually exercises the criterion — integration test for end-to-end flows, unit test for pure logic, functional test for observable side-effects. Skip only when the change has no observable behavior (rename, deps, CI, docs) and the existing suite still covers the affected area
 - Design the public interface / API change — see [interface design](interface-design.md) and [deep modules](deep-modules.md)
 - List behaviors to test (not implementation steps)
 - Always use [trunk-based development](trunkbased-development.md): commit directly to `main`. Use a feature flag only when the acceptance criteria call for hiding the change at runtime.
@@ -39,8 +39,8 @@ Repeat until the acceptance test goes green. See [TDD](tdd.md) for full rules, m
 
 After an acceptance criterion is fully implemented:
 
-1. If any `@freezed` or `@riverpod` class changed: `dart run build_runner build --delete-conflicting-outputs`
-2. `flutter analyze` — zero issues
-3. `flutter test` — all pass (this includes the acceptance test from Phase 2)
+1. `ruff check .` — zero issues (fall back to `flake8` if ruff is not available)
+2. `mypy` — zero type errors (if the project uses type hints)
+3. `pytest` — all pass (this includes the acceptance test from Phase 2)
 4. Commit and push to `main`
 5. Verify CI stays green (see [trunk-based development](trunkbased-development.md))

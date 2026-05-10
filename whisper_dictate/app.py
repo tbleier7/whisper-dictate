@@ -51,8 +51,17 @@ class _Controller(QObject):
 
     def _on_transcription_done(self, text: str) -> None:
         self._window.set_state(AppState.SUCCESS)
-        # Delay lets any held modifier keys fully release before SendInput events fire
-        QTimer.singleShot(100, lambda: keyboard.write(text, delay=0))
+        # Delay lets any held modifier keys fully release before SendInput events fire.
+        # Stop hotkey hooks during injection so synthetic keystrokes (e.g. space in the
+        # transcribed text) cannot re-trigger the recording hotkey while Ctrl+Alt are
+        # still physically held — which would cause a spurious second transcription cycle.
+        def _inject() -> None:
+            self._hotkey.stop()
+            try:
+                keyboard.write(text, delay=0)
+            finally:
+                self._hotkey.start()
+        QTimer.singleShot(100, _inject)
 
     def _on_transcription_failed(self) -> None:
         self._window.set_state(AppState.FAILURE)
