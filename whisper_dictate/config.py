@@ -7,7 +7,6 @@ from pathlib import Path
 _CONFIG_PATH = Path(__file__).parent.parent / "config.json"
 
 _DEFAULTS: dict = {
-    "hotkey": "ctrl+alt+space",
     "languages": ["de", "en"],
     "active_language": "de",
     "window_position": {"x": 100, "y": 100},
@@ -16,7 +15,6 @@ _DEFAULTS: dict = {
 
 @dataclass
 class Config:
-    hotkey: str = "ctrl+alt+space"
     languages: list[str] = field(default_factory=lambda: ["de", "en"])
     active_language: str = "de"
     window_position: dict = field(default_factory=lambda: {"x": 100, "y": 100})
@@ -28,7 +26,6 @@ class Config:
                 data = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
                 merged = {**_DEFAULTS, **data}
                 return cls(
-                    hotkey=merged["hotkey"],
                     languages=merged["languages"],
                     active_language=merged["active_language"],
                     window_position=merged["window_position"],

@@ -73,7 +73,6 @@ Edit `config.json` in the project directory:
 
 ```json
 {
-  "hotkey": "ctrl+alt+space",
   "languages": ["de", "en"],
   "active_language": "de",
   "window_position": { "x": 100, "y": 100 }
@@ -82,10 +81,11 @@ Edit `config.json` in the project directory:
 
 | Field | Description |
 |---|---|
-| `hotkey` | Global hotkey to hold while speaking. Uses `+` to join keys (e.g. `ctrl+alt+space`, `shift+f12`). |
 | `languages` | List of language codes to cycle through when clicking the label. |
 | `active_language` | Language used for transcription on startup. |
 | `window_position` | Pixel position of the floating window. Saved automatically on exit. |
+
+The activation chord is fixed at `left ctrl + left shift` and is not configurable.
 
 Language codes follow [ISO 639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `de`, `en`, `fr`, `ja`, `es`).
 

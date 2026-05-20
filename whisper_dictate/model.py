@@ -5,16 +5,23 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from faster_whisper import WhisperModel
 
 _MODEL_NAME = "large-v3"
-_DEVICE = "cuda"
 _COMPUTE_TYPE = "int8"
 _BEAM_SIZE = 5
 
 
 class _ModelLoaderThread(QThread):
     loaded = pyqtSignal(object)
+    failed = pyqtSignal(str)
 
     def run(self) -> None:
-        model = WhisperModel(_MODEL_NAME, device=_DEVICE, compute_type=_COMPUTE_TYPE)
+        try:
+            model = WhisperModel(_MODEL_NAME, device="cuda", compute_type=_COMPUTE_TYPE)
+        except Exception:
+            try:
+                model = WhisperModel(_MODEL_NAME, device="cpu", compute_type=_COMPUTE_TYPE)
+            except Exception as e:
+                self.failed.emit(str(e))
+                return
         self.loaded.emit(model)
 
 
@@ -44,6 +51,7 @@ class _TranscribeThread(QThread):
 
 class WhisperEngine(QObject):
     model_ready = pyqtSignal()
+    model_load_failed = pyqtSignal(str)
     transcription_done = pyqtSignal(str)
     transcription_failed = pyqtSignal()
 
@@ -52,6 +60,7 @@ class WhisperEngine(QObject):
         self._model: WhisperModel | None = None
         self._loader = _ModelLoaderThread()
         self._loader.loaded.connect(self._on_model_loaded)
+        self._loader.failed.connect(self.model_load_failed)
         self._active_thread: _TranscribeThread | None = None
 
     def start_loading(self) -> None:

@@ -14,6 +14,7 @@ class AppState(enum.Enum):
     RECORDING = "recording"
     SUCCESS = "success"
     FAILURE = "failure"
+    LOAD_FAILED = "load_failed"
 
 
 class WaveformWidget(QWidget):
@@ -131,6 +132,10 @@ class FloatingWindow(QWidget):
             self._stack.setCurrentIndex(0)
             self._bg_color = QColor("#6b1a1a")
             self._flash_timer.start(500)
+        elif state == AppState.LOAD_FAILED:
+            self._label.setText("ERR")
+            self._stack.setCurrentIndex(0)
+            self._bg_color = QColor("#6b1a1a")
         self.update()
 
     def _on_flash_done(self) -> None:
@@ -144,6 +149,7 @@ class FloatingWindow(QWidget):
         idx = langs.index(self._config.active_language)
         self._config.active_language = langs[(idx + 1) % len(langs)]
         self._label.setText(self._config.active_language.upper())
+        self._config.save()
 
     @property
     def state(self) -> AppState:
