@@ -19,13 +19,13 @@ class _Controller(QObject):
         self._window = window
 
         self._recorder = AudioRecorder(self)
-        self._hotkey = HotkeyManager(config.hotkey, self)
+        self._hotkey = HotkeyManager(self)
         self._engine = WhisperEngine(self)
 
-        self._hotkey.recording_started.connect(self._on_recording_started)
-        self._hotkey.recording_stopped.connect(self._on_recording_stopped)
+        self._hotkey.chord_pressed.connect(self._on_chord_pressed)
         self._recorder.amplitude_ready.connect(window.push_amplitude)
         self._engine.model_ready.connect(self._on_model_ready)
+        self._engine.model_load_failed.connect(self._on_model_load_failed)
         self._engine.transcription_done.connect(self._on_transcription_done)
         self._engine.transcription_failed.connect(self._on_transcription_failed)
         window.became_idle.connect(self._on_became_idle)
@@ -37,19 +37,19 @@ class _Controller(QObject):
         self._window.set_state(AppState.IDLE)
         self._hotkey.start()
 
-    def _on_recording_started(self) -> None:
-        if self._window.state != AppState.IDLE:
-            return
-        self._window.set_state(AppState.RECORDING)
-        self._recorder.start()
+    def _on_model_load_failed(self, _error: str) -> None:
+        self._window.set_state(AppState.LOAD_FAILED)
 
-    def _on_recording_stopped(self) -> None:
-        if self._window.state != AppState.RECORDING:
-            return
-        self._hotkey.stop()
-        audio = self._recorder.stop()
-        self._window.set_state(AppState.LOADING)
-        self._engine.transcribe(audio, self._config.active_language)
+    def _on_chord_pressed(self) -> None:
+        state = self._window.state
+        if state == AppState.IDLE:
+            self._window.set_state(AppState.RECORDING)
+            self._recorder.start()
+        elif state == AppState.RECORDING:
+            self._hotkey.stop()
+            audio = self._recorder.stop()
+            self._window.set_state(AppState.LOADING)
+            self._engine.transcribe(audio, self._config.active_language)
 
     def _on_transcription_done(self, text: str) -> None:
         self._window.set_state(AppState.SUCCESS)
