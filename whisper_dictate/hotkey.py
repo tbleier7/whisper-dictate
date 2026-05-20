@@ -15,10 +15,12 @@ class HotkeyManager(QObject):
         self._left_ctrl_down = False
         self._left_shift_down = False
         self._both_seen = False
+        self._polluted = False
         self._hook_ctrl_press = None
         self._hook_ctrl_release = None
         self._hook_shift_press = None
         self._hook_shift_release = None
+        self._hook_global = None
 
     def start(self) -> None:
         self.stop()
@@ -28,6 +30,10 @@ class HotkeyManager(QObject):
         self._hook_ctrl_release = keyboard.on_release_key(_LEFT_CTRL, self._on_ctrl_release)
         self._hook_shift_press = keyboard.on_press_key(_LEFT_SHIFT, self._on_shift_press)
         self._hook_shift_release = keyboard.on_release_key(_LEFT_SHIFT, self._on_shift_release)
+        # Global hook flags the cycle as polluted if any non-chord key goes
+        # down while a chord key is held, so ctrl+shift+T (and similar combos)
+        # do not register as a clean toggle on chord release.
+        self._hook_global = keyboard.hook(self._on_any_event)
 
     def stop(self) -> None:
         # KeyError from unhook means the hook is already gone from `keyboard`'s
@@ -37,6 +43,7 @@ class HotkeyManager(QObject):
             "_hook_ctrl_release",
             "_hook_shift_press",
             "_hook_shift_release",
+            "_hook_global",
         ):
             handle = getattr(self, attr)
             if handle is not None:
@@ -48,6 +55,7 @@ class HotkeyManager(QObject):
         self._left_ctrl_down = False
         self._left_shift_down = False
         self._both_seen = False
+        self._polluted = False
 
     def _on_ctrl_press(self, _event) -> None:
         self._left_ctrl_down = True
@@ -60,13 +68,28 @@ class HotkeyManager(QObject):
             self._both_seen = True
 
     def _on_ctrl_release(self, _event) -> None:
-        if self._both_seen:
+        if self._both_seen and not self._polluted:
             self.chord_pressed.emit()
-            self._both_seen = False
+        self._both_seen = False
         self._left_ctrl_down = False
+        self._reset_cycle_if_chord_released()
 
     def _on_shift_release(self, _event) -> None:
-        if self._both_seen:
+        if self._both_seen and not self._polluted:
             self.chord_pressed.emit()
-            self._both_seen = False
+        self._both_seen = False
         self._left_shift_down = False
+        self._reset_cycle_if_chord_released()
+
+    def _on_any_event(self, event) -> None:
+        if getattr(event, "event_type", None) != "down":
+            return
+        name = getattr(event, "name", None)
+        if name in (_LEFT_CTRL, _LEFT_SHIFT):
+            return
+        if self._left_ctrl_down or self._left_shift_down:
+            self._polluted = True
+
+    def _reset_cycle_if_chord_released(self) -> None:
+        if not self._left_ctrl_down and not self._left_shift_down:
+            self._polluted = False
