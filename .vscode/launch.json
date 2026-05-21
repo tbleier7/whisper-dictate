@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run whisper-dictate",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "whisper_dictate.app",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
