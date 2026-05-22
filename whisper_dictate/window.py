@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import math
-from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush
 
@@ -154,13 +154,21 @@ class FloatingWindow(QWidget):
         )
         self._stack.addWidget(self._label)   # index 0
 
-        self._waveform = WaveformWidget(self._stack)
-        self._stack.addWidget(self._waveform)  # index 1
+        self._recording_page = QWidget(self._stack)
+        recording_layout = QHBoxLayout(self._recording_page)
+        recording_layout.setContentsMargins(0, 0, 0, 0)
+        recording_layout.setSpacing(0)
+        self._rec_dot = RecDotWidget(self._recording_page)
+        self._waveform = WaveformWidget(self._recording_page)
+        recording_layout.addWidget(self._rec_dot)
+        recording_layout.addWidget(self._waveform)
+        self._stack.addWidget(self._recording_page)  # index 1
 
         layout.addWidget(self._stack)
 
     def _apply_state(self, state: AppState) -> None:
         self._state = state
+        self._rec_dot.stop_pulse()
         if state == AppState.LOADING:
             self._label.setText("...")
             self._stack.setCurrentIndex(0)
@@ -173,6 +181,7 @@ class FloatingWindow(QWidget):
             self._waveform.reset()
             self._stack.setCurrentIndex(1)
             self._bg_color = QColor("#0d1b2a")
+            self._rec_dot.start_pulse()
         elif state == AppState.SUCCESS:
             self._label.setText(self._config.active_language.upper())
             self._stack.setCurrentIndex(0)

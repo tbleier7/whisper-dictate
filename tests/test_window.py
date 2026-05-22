@@ -151,3 +151,56 @@ class TestRecDotWidget:
         dot.stop_pulse()
 
         assert not dot._timer.isActive()
+
+
+class TestRecDotIntegration:
+    def test_rec_dot_is_visible_and_pulsing_in_recording_state(self, qtbot, window):
+        window.show()
+        qtbot.waitExposed(window)
+
+        window.set_state(AppState.RECORDING)
+
+        assert window._rec_dot.isVisible()
+        assert window._rec_dot._timer.isActive()
+
+    def test_rec_dot_is_hidden_and_stopped_in_idle_state(self, window):
+        window.set_state(AppState.RECORDING)
+        window.set_state(AppState.IDLE)
+
+        assert window._stack.currentIndex() == 0
+        assert not window._rec_dot._timer.isActive()
+
+    @pytest.mark.parametrize(
+        "target_state",
+        [
+            AppState.LOADING,
+            AppState.IDLE,
+            AppState.SUCCESS,
+            AppState.FAILURE,
+            AppState.LOAD_FAILED,
+        ],
+    )
+    def test_rec_dot_stopped_on_each_non_recording_state(self, window, target_state):
+        window.set_state(AppState.RECORDING)
+        assert window._rec_dot._timer.isActive()
+
+        window.set_state(target_state)
+
+        assert not window._rec_dot._timer.isActive()
+
+    def test_pulse_tick_does_not_trigger_waveform_update(self, window):
+        window.set_state(AppState.RECORDING)
+
+        with mock.patch.object(window._waveform, "update") as mock_update:
+            for _ in range(5):
+                window._rec_dot._tick()
+
+            mock_update.assert_not_called()
+
+    def test_amplitude_pipeline_unchanged_during_recording(self, window):
+        window.set_state(AppState.RECORDING)
+
+        with mock.patch.object(window._waveform, "push_amplitude") as mock_push:
+            window.push_amplitude(0.5)
+
+            mock_push.assert_called_once_with(0.5)
