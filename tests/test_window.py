@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import math
 from unittest import mock
 
 import pytest
 
-from whisper_dictate.window import AppState, FloatingWindow
+from whisper_dictate.window import (
+    AppState,
+    FloatingWindow,
+    RecDotWidget,
+    REC_DOT_OPACITY_MAX,
+    REC_DOT_OPACITY_MIN,
+    REC_DOT_PULSE_INTERVAL_MS,
+    REC_DOT_PULSE_PERIOD_MS,
+)
 
 
 @pytest.fixture
@@ -90,3 +99,55 @@ def test_load_failed_state_is_persistent(qtbot, window):
     qtbot.wait(700)
 
     assert window.state == AppState.LOAD_FAILED
+
+
+class TestRecDotWidget:
+    @pytest.fixture
+    def dot(self, qtbot):
+        widget = RecDotWidget()
+        qtbot.addWidget(widget)
+        return widget
+
+    def test_pulse_phase_starts_at_zero_after_start_pulse(self, dot):
+        dot.start_pulse()
+
+        assert dot.pulse_phase == 0.0
+
+    def test_pulse_phase_advances_on_tick(self, dot):
+        dot.start_pulse()
+        increment = REC_DOT_PULSE_INTERVAL_MS / REC_DOT_PULSE_PERIOD_MS
+        n = 5
+
+        for _ in range(n):
+            dot._tick()
+
+        assert dot.pulse_phase == pytest.approx(n * increment)
+
+    def test_pulse_completes_full_cycle_in_one_second_worth_of_ticks(self, dot):
+        dot.start_pulse()
+        increment = REC_DOT_PULSE_INTERVAL_MS / REC_DOT_PULSE_PERIOD_MS
+        ticks_for_full_cycle = math.ceil(REC_DOT_PULSE_PERIOD_MS / REC_DOT_PULSE_INTERVAL_MS)
+
+        for _ in range(ticks_for_full_cycle):
+            dot._tick()
+
+        # After one period's worth of ticks, phase has wrapped back near 0.
+        assert 0.0 <= dot.pulse_phase < increment
+
+    def test_opacity_is_max_at_peak_phase(self, dot):
+        dot.pulse_phase = 0.25  # sin(2π·0.25) = 1 → peak
+
+        assert dot._current_opacity() == pytest.approx(REC_DOT_OPACITY_MAX)
+
+    def test_opacity_is_min_at_trough_phase(self, dot):
+        dot.pulse_phase = 0.75  # sin(2π·0.75) = -1 → trough
+
+        assert dot._current_opacity() == pytest.approx(REC_DOT_OPACITY_MIN)
+
+    def test_stop_pulse_deactivates_timer(self, dot):
+        dot.start_pulse()
+        assert dot._timer.isActive()
+
+        dot.stop_pulse()
+
+        assert not dot._timer.isActive()

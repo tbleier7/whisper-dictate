@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 import enum
+import math
 from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout
 from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush
 
 from .config import Config
+
+
+REC_DOT_COLOR = "#ff3030"
+REC_DOT_RADIUS = 4
+REC_DOT_WIDGET_WIDTH = 12
+REC_DOT_PULSE_INTERVAL_MS = 33
+REC_DOT_PULSE_PERIOD_MS = 1000
+REC_DOT_OPACITY_MIN = 0.3
+REC_DOT_OPACITY_MAX = 1.0
 
 
 class AppState(enum.Enum):
@@ -46,6 +56,47 @@ class WaveformWidget(QWidget):
             bh = max(2.0, amp * (h - 4))
             x = int(i * step + step / 2)
             painter.drawLine(x, int(cy - bh / 2), x, int(cy + bh / 2))
+
+
+class RecDotWidget(QWidget):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setFixedWidth(REC_DOT_WIDGET_WIDTH)
+        self.pulse_phase: float = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(REC_DOT_PULSE_INTERVAL_MS)
+        self._timer.timeout.connect(self._tick)
+
+    def start_pulse(self) -> None:
+        self.pulse_phase = 0.0
+        self._timer.start()
+
+    def stop_pulse(self) -> None:
+        self._timer.stop()
+        self.update()
+
+    def _tick(self) -> None:
+        delta = REC_DOT_PULSE_INTERVAL_MS / REC_DOT_PULSE_PERIOD_MS
+        self.pulse_phase = (self.pulse_phase + delta) % 1.0
+        self.update()
+
+    def _current_opacity(self) -> float:
+        return REC_DOT_OPACITY_MIN + (REC_DOT_OPACITY_MAX - REC_DOT_OPACITY_MIN) * (
+            0.5 + 0.5 * math.sin(2.0 * math.pi * self.pulse_phase)
+        )
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self._timer.isActive():
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        color = QColor(REC_DOT_COLOR)
+        color.setAlphaF(self._current_opacity())
+        painter.setBrush(QBrush(color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        cx = self.width() // 2
+        cy = self.height() // 2
+        painter.drawEllipse(QPoint(cx, cy), REC_DOT_RADIUS, REC_DOT_RADIUS)
 
 
 class _ClickableLabel(QLabel):
