@@ -44,14 +44,14 @@ def _evt(name, event_type):
     return SimpleNamespace(name=name, event_type=event_type)
 
 
-def test_start_hooks_left_ctrl_and_left_shift_press_release(hooks):
+def test_start_hooks_right_ctrl_and_right_shift_press_release(hooks):
     mgr = HotkeyManager()
     mgr.start()
 
     press_keys = sorted(c.args[0] for c in hooks["on_press_key"].call_args_list)
     release_keys = sorted(c.args[0] for c in hooks["on_release_key"].call_args_list)
-    assert press_keys == ["left ctrl", "left shift"]
-    assert release_keys == ["left ctrl", "left shift"]
+    assert press_keys == ["right ctrl", "right shift"]
+    assert release_keys == ["right ctrl", "right shift"]
 
     # No suppression — ctrl/shift must reach the focused window so combos like
     # ctrl+shift+T still fire their app shortcuts.
@@ -68,10 +68,10 @@ def test_stop_unhooks_all_handles(hooks):
 
     # 4 key-specific hooks + 1 global hook.
     assert hooks["unhook"].call_count == 5
-    hooks["unhook"].assert_any_call("press:left ctrl")
-    hooks["unhook"].assert_any_call("release:left ctrl")
-    hooks["unhook"].assert_any_call("press:left shift")
-    hooks["unhook"].assert_any_call("release:left shift")
+    hooks["unhook"].assert_any_call("press:right ctrl")
+    hooks["unhook"].assert_any_call("release:right ctrl")
+    hooks["unhook"].assert_any_call("press:right shift")
+    hooks["unhook"].assert_any_call("release:right shift")
     hooks["unhook"].assert_any_call("global-hook")
 
 
@@ -106,12 +106,12 @@ def test_start_after_start_replaces_hooks(hooks):
     assert hooks["unhook"].call_count == 5
 
 
-def test_chord_emits_on_left_shift_release(qtbot, hooks):
+def test_chord_emits_on_right_shift_release(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
 
     ctrl_press(None)
     shift_press(None)
@@ -120,12 +120,12 @@ def test_chord_emits_on_left_shift_release(qtbot, hooks):
         shift_release(None)
 
 
-def test_chord_emits_on_left_ctrl_release(qtbot, hooks):
+def test_chord_emits_on_right_ctrl_release(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    ctrl_release = _callback_for(hooks, "on_release_key", "left ctrl")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    ctrl_release = _callback_for(hooks, "on_release_key", "right ctrl")
 
     ctrl_press(None)
     shift_press(None)
@@ -137,8 +137,8 @@ def test_chord_emits_on_left_ctrl_release(qtbot, hooks):
 def test_release_without_other_key_held_no_signal(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
 
     shift_press(None)
 
@@ -149,10 +149,10 @@ def test_release_without_other_key_held_no_signal(qtbot, hooks):
 def test_chord_emits_once_per_cycle(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    ctrl_release = _callback_for(hooks, "on_release_key", "left ctrl")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    ctrl_release = _callback_for(hooks, "on_release_key", "right ctrl")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
 
     signals = []
     mgr.chord_pressed.connect(lambda: signals.append(True))
@@ -168,10 +168,10 @@ def test_chord_emits_once_per_cycle(qtbot, hooks):
 def test_two_clean_chord_cycles_emit_twice(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    ctrl_release = _callback_for(hooks, "on_release_key", "left ctrl")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    ctrl_release = _callback_for(hooks, "on_release_key", "right ctrl")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
 
     signals = []
     mgr.chord_pressed.connect(lambda: signals.append(True))
@@ -201,10 +201,10 @@ def test_start_registers_global_hook(hooks):
 def test_polluted_chord_does_not_emit(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    ctrl_release = _callback_for(hooks, "on_release_key", "left ctrl")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    ctrl_release = _callback_for(hooks, "on_release_key", "right ctrl")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
     global_cb = _global_callback(hooks)
 
     signals = []
@@ -227,10 +227,10 @@ def test_polluted_chord_does_not_emit(qtbot, hooks):
 def test_polluted_chord_blocks_emission_regardless_of_chord_release_order(qtbot, hooks):
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    ctrl_release = _callback_for(hooks, "on_release_key", "left ctrl")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    ctrl_release = _callback_for(hooks, "on_release_key", "right ctrl")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
     global_cb = _global_callback(hooks)
 
     signals = []
@@ -251,10 +251,10 @@ def test_polluted_then_clean_cycle_emits_once(qtbot, hooks):
     """State must reset after a polluted cycle so the next clean chord still toggles."""
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    ctrl_release = _callback_for(hooks, "on_release_key", "left ctrl")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    ctrl_release = _callback_for(hooks, "on_release_key", "right ctrl")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
     global_cb = _global_callback(hooks)
 
     signals = []
@@ -281,15 +281,15 @@ def test_global_hook_ignores_chord_key_down_events(qtbot, hooks):
     those events must NOT pollute the chord."""
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
     global_cb = _global_callback(hooks)
 
     ctrl_press(None)
-    global_cb(_evt("left ctrl", "down"))
+    global_cb(_evt("right ctrl", "down"))
     shift_press(None)
-    global_cb(_evt("left shift", "down"))
+    global_cb(_evt("right shift", "down"))
 
     with qtbot.waitSignal(mgr.chord_pressed, timeout=500):
         shift_release(None)
@@ -299,9 +299,9 @@ def test_global_hook_ignores_up_events_of_non_chord_keys(qtbot, hooks):
     """Only down events count as pollution. A stray up event mid-chord must not block emission."""
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
     global_cb = _global_callback(hooks)
 
     ctrl_press(None)
@@ -317,9 +317,9 @@ def test_pollution_outside_chord_is_ignored(qtbot, hooks):
     for a later clean chord."""
     mgr = HotkeyManager()
     mgr.start()
-    ctrl_press = _callback_for(hooks, "on_press_key", "left ctrl")
-    shift_press = _callback_for(hooks, "on_press_key", "left shift")
-    shift_release = _callback_for(hooks, "on_release_key", "left shift")
+    ctrl_press = _callback_for(hooks, "on_press_key", "right ctrl")
+    shift_press = _callback_for(hooks, "on_press_key", "right shift")
+    shift_release = _callback_for(hooks, "on_release_key", "right shift")
     global_cb = _global_callback(hooks)
 
     # User types normally before reaching for the chord.
