@@ -8,11 +8,11 @@ A personal Windows desktop utility that converts speech to text locally using Op
 
 ## Functional Requirements
 
-### 1. Global Hotkey — Hold to Record
-- Default hotkey: `Ctrl + Alt + Space`
-- **Hold** the hotkey to record, **release** to stop recording and begin transcription
-- Recording is captured for the entire duration the hotkey is held
-- Hotkey must be configurable via config file (no code change required)
+### 1. Global Hotkey — Tap to Toggle
+- Activation chord: `left ctrl + left shift` (fixed; not configurable)
+- **Tap** the chord to start recording, **tap** it again to stop recording and begin transcription
+- The chord must be "clean" — pressing any other key while the chord is held cancels the toggle (e.g. `ctrl+shift+T` passes through to the focused app)
+- Right-side `ctrl` / `shift` are ignored
 
 ### 2. Transcription Output
 - Transcribed text is auto-typed into the currently focused application at the cursor position
@@ -67,7 +67,6 @@ A single `config.json` file in the project root stores all user-configurable set
 
 ```json
 {
-  "hotkey": "ctrl+alt+space",
   "languages": ["de", "en"],
   "active_language": "de",
   "window_position": { "x": 100, "y": 100 }
@@ -75,6 +74,7 @@ A single `config.json` file in the project root stores all user-configurable set
 ```
 
 - Config is read on startup and written on clean exit (to persist window position and active language)
+- The activation chord is fixed at `left ctrl + left shift` and is not configurable
 
 ---
 
