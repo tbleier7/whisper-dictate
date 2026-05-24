@@ -151,8 +151,20 @@ class _ClickableLabel(QLabel):
             super().mousePressEvent(event)
 
 
+class _CloseButton(_ClickableLabel):
+    """Narrow quit button rendered on the right edge of FloatingWindow."""
+
+    def __init__(self, on_click, parent: QWidget | None = None) -> None:
+        super().__init__(on_click, "×", parent)
+        self.setFixedWidth(14)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setStyleSheet("color: white; background: transparent;")
+        self.setToolTip("Quit")
+
+
 class FloatingWindow(QWidget):
     became_idle = pyqtSignal()
+    quit_requested = pyqtSignal()
 
     def __init__(self, config: Config) -> None:
         super().__init__()
@@ -206,6 +218,9 @@ class FloatingWindow(QWidget):
         self._stack.addWidget(self._recording_page)  # index 1
 
         layout.addWidget(self._stack)
+
+        self._close_button = _CloseButton(self.quit_requested.emit, self)
+        layout.addWidget(self._close_button)
 
     def _apply_state(self, state: AppState) -> None:
         _log.info("state → %s", state.value)

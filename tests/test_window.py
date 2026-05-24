@@ -9,6 +9,7 @@ from whisper_dictate.window import (
     AppState,
     FloatingWindow,
     RecDotWidget,
+    _CloseButton,
     _GripHandle,
     REC_DOT_OPACITY_MAX,
     REC_DOT_OPACITY_MIN,
@@ -51,6 +52,38 @@ def test_grip_visible_in_all_states(qtbot, window, state):
     ]
     assert len(grip_handles) == 1, "Expected exactly one _GripHandle child"
     assert grip_handles[0].isVisible(), f"_GripHandle should be visible in state {state}"
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        AppState.IDLE,
+        AppState.LOADING,
+        AppState.RECORDING,
+        AppState.SUCCESS,
+        AppState.FAILURE,
+        AppState.LOAD_FAILED,
+    ],
+)
+def test_close_button_visible_in_all_states(qtbot, window, state):
+    window.show()
+    qtbot.waitExposed(window)
+    window.set_state(state)
+
+    close_buttons = [
+        child for child in window.findChildren(_CloseButton)
+    ]
+    assert len(close_buttons) == 1, "Expected exactly one _CloseButton child"
+    assert close_buttons[0].isVisible(), f"_CloseButton should be visible in state {state}"
+
+
+def test_close_button_emits_quit_requested(qtbot, window):
+    with qtbot.waitSignal(window.quit_requested, timeout=1000):
+        window._close_button._on_click()
+
+
+def test_close_button_tooltip_is_quit(window):
+    assert window._close_button.toolTip() == "Quit"
 
 
 def test_grip_drag_moves_window(qtbot, window):
