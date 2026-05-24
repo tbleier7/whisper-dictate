@@ -9,6 +9,7 @@ from whisper_dictate.window import (
     AppState,
     FloatingWindow,
     RecDotWidget,
+    _GripHandle,
     REC_DOT_OPACITY_MAX,
     REC_DOT_OPACITY_MIN,
     REC_DOT_PULSE_INTERVAL_MS,
@@ -27,6 +28,29 @@ def window(qtbot, config):
 def test_window_size(window):
     assert window.width() == 140
     assert window.height() == 44
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        AppState.IDLE,
+        AppState.LOADING,
+        AppState.RECORDING,
+        AppState.SUCCESS,
+        AppState.FAILURE,
+        AppState.LOAD_FAILED,
+    ],
+)
+def test_grip_visible_in_all_states(qtbot, window, state):
+    window.show()
+    qtbot.waitExposed(window)
+    window.set_state(state)
+
+    grip_handles = [
+        child for child in window.findChildren(_GripHandle)
+    ]
+    assert len(grip_handles) == 1, "Expected exactly one _GripHandle child"
+    assert grip_handles[0].isVisible(), f"_GripHandle should be visible in state {state}"
 
 
 def test_cycle_language_changes_active_language(window, config):

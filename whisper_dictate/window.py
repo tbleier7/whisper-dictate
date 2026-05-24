@@ -102,6 +102,17 @@ class RecDotWidget(QWidget):
         painter.drawEllipse(QPoint(cx, cy), REC_DOT_RADIUS, REC_DOT_RADIUS)
 
 
+class _GripHandle(QLabel):
+    """Narrow drag handle rendered on the left edge of FloatingWindow."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("⠿", parent)
+        self.setFixedWidth(14)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setStyleSheet("color: white; background: transparent;")
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+
+
 class _ClickableLabel(QLabel):
     def __init__(self, on_click, text: str = "", parent: QWidget | None = None) -> None:
         super().__init__(text, parent)
@@ -143,9 +154,12 @@ class FloatingWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(140, 44)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 4, 6, 4)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 4, 6, 4)
         layout.setSpacing(0)
+
+        self._grip = _GripHandle(self)
+        layout.addWidget(self._grip)
 
         self._stack = QStackedWidget(self)
         self._stack.setStyleSheet("background: transparent;")
