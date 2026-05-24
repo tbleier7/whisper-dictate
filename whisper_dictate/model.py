@@ -10,50 +10,69 @@ from faster_whisper import WhisperModel
 _log = logging.getLogger(__name__)
 
 _MODEL_NAME = "large-v3"
-_COMPUTE_TYPE = "int8"
+# Compute type per device: float16 is the fast path on a CUDA GPU (and fits
+# large-v3 comfortably in modest VRAM), while int8 is the CPU-optimal type.
+_COMPUTE_TYPE = {"cuda": "float16", "cpu": "int8"}
 _BEAM_SIZE = 5
 
 
 def _add_nvidia_dll_dirs() -> None:
-    """Add nvidia-* package DLL directories to PATH so ctranslate2 can find them.
+    """Put the nvidia-*-cu12 wheel ``bin`` directories on PATH for ctranslate2.
 
-    nvidia-cublas-cu12 and friends install under site-packages/nvidia/*/bin.
-    ctranslate2 loads CUDA libraries via LoadLibraryA which searches PATH,
-    so we prepend those directories before the first GPU model load attempt.
+    The CUDA wheels (nvidia-cublas-cu12 and its dependency nvidia-cuda-nvrtc-cu12)
+    install their DLLs under ``<site-packages>/nvidia/*/bin``. ctranslate2 loads
+    those libraries via ``LoadLibraryA``, which searches PATH, so we prepend the
+    directories before the first GPU load attempt.
+
+    We locate them through the importable ``nvidia`` namespace package rather than
+    guessing site-packages paths, so discovery works no matter where pip placed
+    the wheels — venv, ``pipx``, ``pip install --user``, or a global install.
+    Guessing site dirs was the cause of silent CPU fallbacks when the app ran from
+    an interpreter whose layout ``site.getsitepackages()`` did not cover.
     """
     if sys.platform != "win32":
         return
-    import site
+    try:
+        import nvidia  # namespace package provided by the nvidia-*-cu12 wheels
+    except ImportError:
+        _log.warning(
+            "nvidia CUDA wheels not importable in this environment — GPU will be "
+            "unavailable, falling back to CPU"
+        )
+        return
     from pathlib import Path
     dirs: list[str] = []
-    # Include the per-user site-packages: a `pip install --user` (common when
-    # not using a venv) lands there, and getsitepackages() does not cover it.
-    search_paths = site.getsitepackages() + [site.getusersitepackages()]
-    for sp in search_paths:
-        nvidia = Path(sp) / "nvidia"
-        if nvidia.is_dir():
-            for bin_dir in nvidia.glob("*/bin"):
-                dirs.append(str(bin_dir))
-                _log.debug("adding DLL dir to PATH: %s", bin_dir)
+    for root in nvidia.__path__:
+        for bin_dir in Path(root).glob("*/bin"):
+            dirs.append(str(bin_dir))
+            _log.debug("adding DLL dir to PATH: %s", bin_dir)
     if dirs:
         os.environ["PATH"] = ";".join(dirs) + ";" + os.environ.get("PATH", "")
 
 
 class _ModelLoaderThread(QThread):
-    loaded = pyqtSignal(object)
+    loaded = pyqtSignal(object, str)
     failed = pyqtSignal(str)
 
     def run(self) -> None:
         _add_nvidia_dll_dirs()
         last_error = "unknown error"
         for device in ("cuda", "cpu"):
+            compute_type = _COMPUTE_TYPE[device]
             try:
-                model = WhisperModel(_MODEL_NAME, device=device, compute_type=_COMPUTE_TYPE)
+                model = WhisperModel(_MODEL_NAME, device=device, compute_type=compute_type)
                 # CUDA may load without error but fail at inference time (missing DLLs).
                 # Run a tiny test to catch that before we consider the model ready.
                 list(model.transcribe(np.zeros(16000, dtype=np.float32), language="en")[0])
-                _log.info("model loaded on device=%s", device)
-                self.loaded.emit(model)
+                if device == "cpu":
+                    _log.warning(
+                        "model loaded on CPU (compute_type=%s) — transcription will be SLOW; "
+                        "GPU/CUDA was unavailable in this Python environment",
+                        compute_type,
+                    )
+                else:
+                    _log.info("model loaded on device=%s (compute_type=%s)", device, compute_type)
+                self.loaded.emit(model, device)
                 return
             except Exception as exc:
                 last_error = str(exc)
@@ -89,7 +108,7 @@ class _TranscribeThread(QThread):
 
 
 class WhisperEngine(QObject):
-    model_ready = pyqtSignal()
+    model_ready = pyqtSignal(str)
     model_load_failed = pyqtSignal(str)
     transcription_done = pyqtSignal(str)
     transcription_failed = pyqtSignal()
@@ -97,6 +116,7 @@ class WhisperEngine(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._model: WhisperModel | None = None
+        self._device: str | None = None
         self._loader = _ModelLoaderThread()
         self._loader.loaded.connect(self._on_model_loaded)
         self._loader.failed.connect(self.model_load_failed)
@@ -105,9 +125,10 @@ class WhisperEngine(QObject):
     def start_loading(self) -> None:
         self._loader.start()
 
-    def _on_model_loaded(self, model: WhisperModel) -> None:
+    def _on_model_loaded(self, model: WhisperModel, device: str) -> None:
         self._model = model
-        self.model_ready.emit()
+        self._device = device
+        self.model_ready.emit(device)
 
     def transcribe(self, audio: np.ndarray, language: str) -> None:
         thread = _TranscribeThread(self._model, audio, language)

@@ -158,6 +158,7 @@ class FloatingWindow(QWidget):
         super().__init__()
         self._config = config
         self._state = AppState.LOADING
+        self._device: str | None = None
         self._bg_color = QColor("#2d2d2d")
 
         self._flash_timer = QTimer(self)
@@ -259,6 +260,26 @@ class FloatingWindow(QWidget):
     def set_state(self, state: AppState) -> None:
         if self._state != state:
             self._apply_state(state)
+
+    def set_device(self, device: str) -> None:
+        """Reflect the compute device in the UI so a slow CPU fallback is never silent.
+
+        Running on CPU tints the language label amber; GPU keeps it white. The
+        tooltip always names the device and, for CPU, says how to get the GPU back.
+        """
+        self._device = device
+        if device == "cpu":
+            color = "#ffb000"
+            self.setToolTip(
+                "Running on CPU — transcription is slow.\n"
+                "Launch from the venv (.venv\\Scripts\\whisper-dictate.exe) to use the GPU."
+            )
+        else:
+            color = "white"
+            self.setToolTip(f"Running on GPU ({device})")
+        self._label.setStyleSheet(
+            f"color: {color}; font: bold 13px; letter-spacing: 2px; background: transparent;"
+        )
 
     def push_amplitude(self, value: float) -> None:
         if self._state == AppState.RECORDING:

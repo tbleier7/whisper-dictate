@@ -14,7 +14,12 @@ dependencies = [
     "numpy",
     "keyboard",
     "PyQt6",
+    # CUDA runtime libs for the GPU path, installed automatically on win/linux so
+    # `pip install whisper-dictate` gives GPU transcription out of the box. cuDNN
+    # is bundled inside the ctranslate2 wheel; cuBLAS pulls NVRTC transitively but
+    # we pin it explicitly so the GPU closure does not depend on that staying true.
     "nvidia-cublas-cu12; sys_platform == 'win32' or sys_platform == 'linux'",
+    "nvidia-cuda-nvrtc-cu12; sys_platform == 'win32' or sys_platform == 'linux'",
 ]
 
 [project.scripts]
