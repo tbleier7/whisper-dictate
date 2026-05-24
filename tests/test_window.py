@@ -172,6 +172,34 @@ def test_load_failed_state_is_persistent(qtbot, window):
     assert window.state == AppState.LOAD_FAILED
 
 
+def test_position_saved_on_close(qtbot, window, config):
+    """Closing the window persists its current position to config."""
+    window.move(300, 250)
+
+    with mock.patch.object(config, "save") as mock_save:
+        window.close()
+
+    assert config.window_position == {"x": 300, "y": 250}
+    mock_save.assert_called_once()
+
+
+def test_position_restored_on_launch(qtbot):
+    """FloatingWindow moves to the position stored in Config on startup."""
+    from whisper_dictate.config import Config
+
+    cfg = Config(
+        languages=["de", "en"],
+        active_language="de",
+        window_position={"x": 500, "y": 350},
+    )
+    with mock.patch("whisper_dictate.config.Config.save"):
+        w = FloatingWindow(cfg)
+        qtbot.addWidget(w)
+
+    assert w.pos().x() == 500
+    assert w.pos().y() == 350
+
+
 class TestRecDotWidget:
     @pytest.fixture
     def dot(self, qtbot):
