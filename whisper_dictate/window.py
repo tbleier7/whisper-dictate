@@ -141,7 +141,7 @@ class FloatingWindow(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(96, 38)
+        self.setFixedSize(140, 44)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 4, 6, 4)

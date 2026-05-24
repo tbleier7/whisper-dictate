@@ -24,6 +24,11 @@ def window(qtbot, config):
         yield w
 
 
+def test_window_size(window):
+    assert window.width() == 140
+    assert window.height() == 44
+
+
 def test_cycle_language_changes_active_language(window, config):
     config.active_language = "de"
     window.set_state(AppState.IDLE)
