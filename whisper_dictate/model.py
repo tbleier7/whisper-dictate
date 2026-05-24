@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import numpy as np
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from faster_whisper import WhisperModel
+
+_log = logging.getLogger(__name__)
 
 _MODEL_NAME = "large-v3"
 _COMPUTE_TYPE = "int8"
@@ -14,15 +17,18 @@ class _ModelLoaderThread(QThread):
     failed = pyqtSignal(str)
 
     def run(self) -> None:
-        try:
-            model = WhisperModel(_MODEL_NAME, device="cuda", compute_type=_COMPUTE_TYPE)
-        except Exception:
+        for device in ("cuda", "cpu"):
             try:
-                model = WhisperModel(_MODEL_NAME, device="cpu", compute_type=_COMPUTE_TYPE)
-            except Exception as e:
-                self.failed.emit(str(e))
+                model = WhisperModel(_MODEL_NAME, device=device, compute_type=_COMPUTE_TYPE)
+                # CUDA may load without error but fail at inference time (missing DLLs).
+                # Run a tiny test to catch that before we consider the model ready.
+                list(model.transcribe(np.zeros(16000, dtype=np.float32), language="en")[0])
+                _log.info("model loaded on device=%s", device)
+                self.loaded.emit(model)
                 return
-        self.loaded.emit(model)
+            except Exception as exc:
+                _log.warning("device=%s failed (%s), trying next", device, exc)
+        self.failed.emit("Could not load model on any device")
 
 
 class _TranscribeThread(QThread):
@@ -42,10 +48,13 @@ class _TranscribeThread(QThread):
             )
             text = "".join(s.text for s in segments).strip()
             if text:
+                _log.info("transcription: %r", text)
                 self.transcribed.emit(text)
             else:
+                _log.warning("transcription returned empty text")
                 self.failed.emit()
-        except Exception:
+        except Exception as exc:
+            _log.exception("transcription raised: %s", exc)
             self.failed.emit()
 
 
