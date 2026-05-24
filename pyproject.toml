@@ -12,6 +12,7 @@ dependencies = [
     "numpy",
     "keyboard",
     "PyQt6",
+    "nvidia-cublas-cu12; sys_platform == 'win32' or sys_platform == 'linux'",
 ]
 
 [project.scripts]

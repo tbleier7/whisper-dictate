@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import numpy as np
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from faster_whisper import WhisperModel
@@ -12,11 +14,34 @@ _COMPUTE_TYPE = "int8"
 _BEAM_SIZE = 5
 
 
+def _add_nvidia_dll_dirs() -> None:
+    """Add nvidia-* package DLL directories to PATH so ctranslate2 can find them.
+
+    nvidia-cublas-cu12 and friends install under site-packages/nvidia/*/bin.
+    ctranslate2 loads CUDA libraries via LoadLibraryA which searches PATH,
+    so we prepend those directories before the first GPU model load attempt.
+    """
+    if sys.platform != "win32":
+        return
+    import site
+    from pathlib import Path
+    dirs: list[str] = []
+    for sp in site.getsitepackages():
+        nvidia = Path(sp) / "nvidia"
+        if nvidia.is_dir():
+            for bin_dir in nvidia.glob("*/bin"):
+                dirs.append(str(bin_dir))
+                _log.debug("adding DLL dir to PATH: %s", bin_dir)
+    if dirs:
+        os.environ["PATH"] = ";".join(dirs) + ";" + os.environ.get("PATH", "")
+
+
 class _ModelLoaderThread(QThread):
     loaded = pyqtSignal(object)
     failed = pyqtSignal(str)
 
     def run(self) -> None:
+        _add_nvidia_dll_dirs()
         for device in ("cuda", "cpu"):
             try:
                 model = WhisperModel(_MODEL_NAME, device=device, compute_type=_COMPUTE_TYPE)
