@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import enum
+import logging
 import math
 from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush
 
 from .config import Config
+
+_log = logging.getLogger(__name__)
 
 
 REC_DOT_COLOR = "#ff3030"
@@ -167,6 +170,7 @@ class FloatingWindow(QWidget):
         layout.addWidget(self._stack)
 
     def _apply_state(self, state: AppState) -> None:
+        _log.info("state → %s", state.value)
         self._state = state
         self._rec_dot.stop_pulse()
         if state == AppState.LOADING:
