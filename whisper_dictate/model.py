@@ -26,7 +26,10 @@ def _add_nvidia_dll_dirs() -> None:
     import site
     from pathlib import Path
     dirs: list[str] = []
-    for sp in site.getsitepackages():
+    # Include the per-user site-packages: a `pip install --user` (common when
+    # not using a venv) lands there, and getsitepackages() does not cover it.
+    search_paths = site.getsitepackages() + [site.getusersitepackages()]
+    for sp in search_paths:
         nvidia = Path(sp) / "nvidia"
         if nvidia.is_dir():
             for bin_dir in nvidia.glob("*/bin"):
