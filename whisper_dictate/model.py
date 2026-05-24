@@ -42,6 +42,7 @@ class _ModelLoaderThread(QThread):
 
     def run(self) -> None:
         _add_nvidia_dll_dirs()
+        last_error = "unknown error"
         for device in ("cuda", "cpu"):
             try:
                 model = WhisperModel(_MODEL_NAME, device=device, compute_type=_COMPUTE_TYPE)
@@ -52,8 +53,9 @@ class _ModelLoaderThread(QThread):
                 self.loaded.emit(model)
                 return
             except Exception as exc:
+                last_error = str(exc)
                 _log.warning("device=%s failed (%s), trying next", device, exc)
-        self.failed.emit("Could not load model on any device")
+        self.failed.emit(f"Could not load model on any device: {last_error}")
 
 
 class _TranscribeThread(QThread):

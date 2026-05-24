@@ -115,7 +115,12 @@ def test_transcribe_emits_failed_when_segments_only_whitespace(qtbot):
 
 def test_transcribe_emits_failed_when_model_raises(qtbot):
     model = mock.MagicMock()
-    model.transcribe.side_effect = RuntimeError("inference exploded")
+    # First call is the loader's validation transcribe (must succeed so the
+    # model loads); the real transcribe call then raises.
+    model.transcribe.side_effect = [
+        ([_segment("warmup")], None),
+        RuntimeError("inference exploded"),
+    ]
     engine = _make_engine_with_loaded_model(qtbot, model)
 
     audio = np.zeros(16000, dtype=np.float32)

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package and test deps
+        run: pip install -e .[test]
+
+      # GPU, real microphone, and the ~3 GB Whisper model are unavailable on CI,
+      # so the slow integration tests are skipped. Qt runs headless via offscreen.
+      - name: Run fast tests (headless)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: pytest -m "not slow"
+
+  install-smoke:
+    name: Install from source
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # Non-editable install, the same path as `pip install git+https://...`.
+      - name: Install from source
+        run: pip install .
+
+      - name: Package imports cleanly
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -c "import whisper_dictate.app, whisper_dictate.config, whisper_dictate.hotkey, whisper_dictate.model"
+
+      # Guards the per-user config fix: a non-editable install must not resolve
+      # config inside site-packages (where it is unreadable / unwritable).
+      - name: Config resolves outside site-packages
+        run: >
+          python -c "import pathlib, site, whisper_dictate.config as c;
+          p = pathlib.Path(c._CONFIG_PATH).resolve();
+          roots = [pathlib.Path(s).resolve() for s in site.getsitepackages()];
+          assert not any(r in p.parents for r in roots), p;
+          print('config path OK:', p)"
