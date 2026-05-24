@@ -13,6 +13,9 @@ from whisper_dictate.config import Config
 def config_path(tmp_path, monkeypatch) -> Path:
     path = tmp_path / "config.json"
     monkeypatch.setattr(config_module, "_CONFIG_PATH", path)
+    # Point the legacy fallback at a path that does not exist so these tests
+    # exercise only the user-dir config, not whatever sits in the repo root.
+    monkeypatch.setattr(config_module, "_LEGACY_CONFIG_PATH", tmp_path / "legacy.json")
     return path
 
 
@@ -70,3 +73,45 @@ def test_save_writes_human_readable_json(config_path):
 
     assert "\n" in text
     assert parsed["active_language"] == "de"
+
+
+def test_save_creates_missing_config_dir(tmp_path, monkeypatch):
+    nested = tmp_path / "whisper-dictate" / "config.json"
+    monkeypatch.setattr(config_module, "_CONFIG_PATH", nested)
+    monkeypatch.setattr(config_module, "_LEGACY_CONFIG_PATH", tmp_path / "legacy.json")
+    assert not nested.parent.exists()
+
+    Config(active_language="fr").save()
+
+    assert json.loads(nested.read_text(encoding="utf-8"))["active_language"] == "fr"
+
+
+def test_load_falls_back_to_legacy_when_user_config_missing(tmp_path, monkeypatch):
+    """Existing repo-root config migrates: load reads legacy, save writes user dir."""
+    user = tmp_path / "user" / "config.json"
+    legacy = tmp_path / "legacy.json"
+    legacy.write_text(
+        json.dumps({"active_language": "en", "window_position": {"x": 7, "y": 9}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config_module, "_CONFIG_PATH", user)
+    monkeypatch.setattr(config_module, "_LEGACY_CONFIG_PATH", legacy)
+
+    cfg = Config.load()
+    assert cfg.active_language == "en"
+    assert cfg.window_position == {"x": 7, "y": 9}
+
+    cfg.save()
+    assert user.exists()
+    assert json.loads(user.read_text(encoding="utf-8"))["active_language"] == "en"
+
+
+def test_user_config_takes_precedence_over_legacy(tmp_path, monkeypatch):
+    user = tmp_path / "config.json"
+    legacy = tmp_path / "legacy.json"
+    user.write_text(json.dumps({"active_language": "ja"}), encoding="utf-8")
+    legacy.write_text(json.dumps({"active_language": "en"}), encoding="utf-8")
+    monkeypatch.setattr(config_module, "_CONFIG_PATH", user)
+    monkeypatch.setattr(config_module, "_LEGACY_CONFIG_PATH", legacy)
+
+    assert Config.load().active_language == "ja"

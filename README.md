@@ -69,7 +69,14 @@ The floating window appears. On first launch, it shows `...` while loading the m
 
 ## Configuration
 
-Edit `config.json` in the project directory:
+Configuration lives in a per-user file, created on first exit:
+
+- **Windows:** `%APPDATA%\whisper-dictate\config.json`
+- **macOS:** `~/Library/Application Support/whisper-dictate/config.json`
+- **Linux:** `$XDG_CONFIG_HOME/whisper-dictate/config.json` (or `~/.config/...`)
+
+If a `config.json` from an older install still sits in the project root, it is
+read once and migrated to the per-user location the next time the app exits.
 
 ```json
 {
