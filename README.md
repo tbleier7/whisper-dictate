@@ -136,6 +136,16 @@ Language codes follow [ISO 639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-
 
 ---
 
+## Development
+
+This repo includes an MCP test harness (`mcp_server.py`) for driving the app from
+Claude Code during development — starting/stopping it, simulating the hotkey, and
+screenshotting the floating window. To enable it, copy `.mcp.json.example` to
+`.mcp.json` and adjust the paths to your clone if needed. The `.mcp.json` file is
+git-ignored so machine-specific paths stay out of the repo.
+
+---
+
 ## License
 
 Released under the [MIT License](LICENSE). © 2026 Tobias Bleier.

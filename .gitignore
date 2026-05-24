@@ -11,5 +11,8 @@ venv/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Local MCP wiring with machine-specific paths (copy from .mcp.json.example)
+.mcp.json
+
 # AI-assisted dev workflow artifacts (kept local, not published)
 research-plan-implement/

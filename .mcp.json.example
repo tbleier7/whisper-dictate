@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "whisper-dictate": {
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["mcp_server.py"]
+    }
+  }
+}
