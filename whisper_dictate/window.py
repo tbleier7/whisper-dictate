@@ -111,6 +111,30 @@ class _GripHandle(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setStyleSheet("color: white; background: transparent;")
         self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self._drag_offset: QPoint | None = None
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_offset = (
+                event.globalPosition().toPoint() - self.window().frameGeometry().topLeft()
+            )
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self._drag_offset is not None:
+            self.window().move(event.globalPosition().toPoint() - self._drag_offset)
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_offset = None
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
 
 
 class _ClickableLabel(QLabel):
@@ -133,7 +157,6 @@ class FloatingWindow(QWidget):
     def __init__(self, config: Config) -> None:
         super().__init__()
         self._config = config
-        self._drag_pos: QPoint | None = None
         self._state = AppState.LOADING
         self._bg_color = QColor("#2d2d2d")
 
@@ -247,19 +270,6 @@ class FloatingWindow(QWidget):
         painter.setBrush(QBrush(self._bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(self.rect(), 8, 8)
-
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._drag_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
-            self.move(event.globalPosition().toPoint() - self._drag_pos)
-            event.accept()
-
-    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        self._drag_pos = None
 
     def closeEvent(self, event) -> None:
         pos = self.pos()

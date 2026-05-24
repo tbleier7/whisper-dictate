@@ -53,6 +53,48 @@ def test_grip_visible_in_all_states(qtbot, window, state):
     assert grip_handles[0].isVisible(), f"_GripHandle should be visible in state {state}"
 
 
+def test_grip_drag_moves_window(qtbot, window):
+    """Dragging the grip handle repositions the window."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtCore import QPointF
+    from PyQt6.QtCore import Qt
+
+    window.show()
+    qtbot.waitExposed(window)
+    window.move(100, 100)
+
+    grip = window._grip
+
+    # Simulate press at grip center (in global coords)
+    grip_global = grip.mapToGlobal(QPoint(grip.width() // 2, grip.height() // 2))
+
+    press_event = QMouseEvent(
+        QMouseEvent.Type.MouseButtonPress,
+        QPointF(grip.width() // 2, grip.height() // 2),
+        QPointF(grip_global),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    grip.mousePressEvent(press_event)
+
+    # Simulate move 30px right and 20px down
+    new_global = QPointF(grip_global.x() + 30, grip_global.y() + 20)
+    move_event = QMouseEvent(
+        QMouseEvent.Type.MouseMove,
+        QPointF(grip.width() // 2 + 30, grip.height() // 2 + 20),
+        new_global,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    grip.mouseMoveEvent(move_event)
+
+    assert window.pos().x() == pytest.approx(130, abs=2)
+    assert window.pos().y() == pytest.approx(120, abs=2)
+
+
 def test_cycle_language_changes_active_language(window, config):
     config.active_language = "de"
     window.set_state(AppState.IDLE)
