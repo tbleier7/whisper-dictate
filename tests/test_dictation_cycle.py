@@ -20,7 +20,7 @@ def ctrl(qtbot, config):
         window = FloatingWindow(config)
         qtbot.addWidget(window)
         controller = _Controller(config, window)
-        controller._on_model_ready()
+        controller._on_model_ready("cuda")
         yield controller, window
 
 

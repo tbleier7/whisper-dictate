@@ -76,7 +76,8 @@ class _Controller(QObject):
         # Window starts in LOADING; hotkey enabled only after model is ready
         self._engine.start_loading()
 
-    def _on_model_ready(self) -> None:
+    def _on_model_ready(self, device: str) -> None:
+        self._window.set_device(device)
         self._window.set_state(AppState.IDLE)
         self._hotkey.start()
 

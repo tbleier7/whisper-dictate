@@ -21,27 +21,46 @@ A small floating window shows the current state at all times.
 - Windows 10/11
 - Python 3.10 or later
 - A microphone
-- *(Optional)* an NVIDIA GPU with CUDA for fast transcription (tested on RTX 2070 Super). Without one, the app falls back to CPU automatically — slower, but functional.
+- *(Optional)* an NVIDIA GPU for fast transcription (tested on RTX 2070 Super). The CUDA libraries are installed automatically with the app — you do **not** need to install the CUDA Toolkit, only a reasonably recent NVIDIA driver. Without a GPU, the app falls back to CPU automatically — slower, but functional, and it tells you when it does (see [Status Indicators](#status-indicators)).
 
 ---
 
 ## Installation
 
+One command installs everything — including the CUDA libraries for GPU
+transcription — and puts the `whisper-dictate` command on your PATH. There is no
+venv to activate and no CUDA Toolkit to install separately.
+
+The easiest way is [pipx](https://pipx.pypa.io), which keeps the app in its own
+isolated environment while still exposing the command globally:
+
+```powershell
+pipx install "git+https://github.com/tbleier7/whisper-dictate.git"
+whisper-dictate
+```
+
+> Don't have pipx? Install it once with `python -m pip install --user pipx` then
+> `python -m pipx ensurepath` (reopen your terminal afterwards).
+
+Prefer plain pip? Install into your user site instead:
+
+```powershell
+pip install --user "git+https://github.com/tbleier7/whisper-dictate.git"
+whisper-dictate
+```
+
+For development, clone and install editable in a venv:
+
 ```powershell
 git clone https://github.com/tbleier7/whisper-dictate.git
 cd whisper-dictate
-
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-pip install -e .          # add ".[test]" to include the test dependencies
+pip install -e ".[test]"        # ".[test]" adds the test dependencies
 ```
 
-You can also install straight from GitHub without cloning:
-
-```powershell
-pip install "git+https://github.com/tbleier7/whisper-dictate.git"
-```
+Whichever method you pick, the GPU libraries land in the same environment as the
+app, so it finds them automatically at runtime — no PATH tweaking required.
 
 The Whisper model (`whisper-large-v3`, several GB) is downloaded automatically from Hugging Face on first run, so the initial startup needs network access and may take a while.
 
@@ -76,10 +95,13 @@ The floating window appears. On first launch, it shows `...` while loading the m
 | Display | Meaning |
 |---|---|
 | `...` | Loading model |
-| `de` / `en` / etc. | Idle, ready to record |
+| `de` / `en` / etc. (white) | Idle, ready to record — running on the **GPU** |
+| `de` / `en` / etc. (amber) | Idle, but running on **CPU** (slow). Hover for why; reinstall in an environment with the NVIDIA GPU libraries to fix it. |
 | Waveform bars | Recording in progress |
 | Green flash | Transcription successful |
 | Red flash | No speech detected or transcription failed |
+
+Hover the window any time to see the active device in a tooltip (`Running on GPU (cuda)` or a CPU warning).
 
 ---
 
@@ -123,6 +145,7 @@ Language codes follow [ISO 639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-
 | `numpy` | Audio array processing |
 | `keyboard` | Global hotkey monitoring |
 | `PyQt6` | Floating window UI |
+| `nvidia-cublas-cu12`, `nvidia-cuda-nvrtc-cu12` | CUDA GPU libraries (Windows/Linux only; installed automatically). cuDNN ships inside the `faster-whisper`/CTranslate2 wheel. |
 
 ---
 
