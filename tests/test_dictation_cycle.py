@@ -24,26 +24,24 @@ def ctrl(qtbot, config):
         yield controller, window
 
 
-def test_text_injected_after_transcription(qtbot, ctrl):
+def test_text_injected_after_transcription(qtbot, ctrl, text_capture):
     controller, _ = ctrl
     controller._on_chord_pressed()  # IDLE -> RECORDING
     controller._on_chord_pressed()  # RECORDING -> LOADING
 
-    with mock.patch("keyboard.write") as mock_write:
-        controller._on_transcription_done("hello world")
-        qtbot.wait(200)
-        mock_write.assert_called_once_with("hello world", delay=0)
+    controller._on_transcription_done("hello world")
+    qtbot.wait(200)
+    assert text_capture.read_text(encoding="utf-8") == "hello world"
 
 
-def test_window_returns_to_idle_after_success(qtbot, ctrl):
+def test_window_returns_to_idle_after_success(qtbot, ctrl, text_capture):
     controller, window = ctrl
     controller._on_chord_pressed()
     controller._on_chord_pressed()
 
-    with mock.patch("keyboard.write"):
-        controller._on_transcription_done("hello world")
-        qtbot.wait(700)
-        assert window.state == AppState.IDLE
+    controller._on_transcription_done("hello world")
+    qtbot.wait(700)
+    assert window.state == AppState.IDLE
 
 
 def test_window_returns_to_idle_after_failure(qtbot, ctrl):
@@ -56,14 +54,13 @@ def test_window_returns_to_idle_after_failure(qtbot, ctrl):
     assert window.state == AppState.IDLE
 
 
-def test_new_recording_accepted_after_full_cycle(qtbot, ctrl):
+def test_new_recording_accepted_after_full_cycle(qtbot, ctrl, text_capture):
     controller, window = ctrl
     controller._on_chord_pressed()
     controller._on_chord_pressed()
 
-    with mock.patch("keyboard.write"):
-        controller._on_transcription_done("hello world")
-        qtbot.wait(700)
+    controller._on_transcription_done("hello world")
+    qtbot.wait(700)
 
     controller._on_chord_pressed()
     assert window.state == AppState.RECORDING
@@ -79,16 +76,15 @@ def test_hotkey_stopped_during_transcription(ctrl):
     mock_hotkey.stop.assert_called_once()
 
 
-def test_hotkey_restarted_after_idle(qtbot, ctrl):
+def test_hotkey_restarted_after_idle(qtbot, ctrl, text_capture):
     controller, _ = ctrl
     mock_hotkey = controller._hotkey
 
     controller._on_chord_pressed()
     controller._on_chord_pressed()
 
-    with mock.patch("keyboard.write"):
-        controller._on_transcription_done("hello")
-        qtbot.wait(700)
+    controller._on_transcription_done("hello")
+    qtbot.wait(700)
 
     # start() called once at model ready + once after idle transition
     assert mock_hotkey.start.call_count == 2
@@ -126,7 +122,7 @@ def test_hotkey_not_started_when_model_load_fails(qtbot, config):
         controller._hotkey.start.assert_not_called()
 
 
-def test_hotkey_restarted_after_failure_path(qtbot, ctrl):
+def test_hotkey_restarted_after_failure_path(qtbot, ctrl, text_capture):
     controller, window = ctrl
     mock_hotkey = controller._hotkey
 
@@ -140,7 +136,7 @@ def test_hotkey_restarted_after_failure_path(qtbot, ctrl):
     assert mock_hotkey.start.call_count == 2
 
 
-def test_chord_ignored_during_non_idle_non_recording_states(qtbot, ctrl):
+def test_chord_ignored_during_non_idle_non_recording_states(qtbot, ctrl, text_capture):
     controller, window = ctrl
 
     controller._on_chord_pressed()  # IDLE -> RECORDING
@@ -151,11 +147,10 @@ def test_chord_ignored_during_non_idle_non_recording_states(qtbot, ctrl):
     controller._on_chord_pressed()
     assert window.state == AppState.LOADING
 
-    with mock.patch("keyboard.write"):
-        controller._on_transcription_done("hello")
-        # SUCCESS flash — chord must not re-trigger recording.
-        controller._on_chord_pressed()
-        assert window.state == AppState.SUCCESS
+    controller._on_transcription_done("hello")
+    # SUCCESS flash — chord must not re-trigger recording.
+    controller._on_chord_pressed()
+    assert window.state == AppState.SUCCESS
 
 
 def test_language_click_during_loading_is_ignored(qtbot, ctrl):
