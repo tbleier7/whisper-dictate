@@ -176,3 +176,22 @@ def test_language_click_during_recording_is_ignored(qtbot, ctrl):
     window._cycle_language()
 
     assert controller._config.active_language == original_lang
+
+
+def test_quit_requested_quits_application(qtbot, ctrl):
+    controller, window = ctrl
+
+    with mock.patch("whisper_dictate.app.QApplication") as MockQApp:
+        window.quit_requested.emit()
+
+    MockQApp.instance.return_value.quit.assert_called_once()
+
+
+def test_cleanup_stops_all_subsystems(ctrl):
+    controller, _ = ctrl
+
+    controller.cleanup()
+
+    controller._hotkey.stop.assert_called()
+    controller._recorder.stop.assert_called()
+    controller._engine.cleanup.assert_called()

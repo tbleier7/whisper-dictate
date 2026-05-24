@@ -72,6 +72,7 @@ class _Controller(QObject):
         self._engine.transcription_done.connect(self._on_transcription_done)
         self._engine.transcription_failed.connect(self._on_transcription_failed)
         window.became_idle.connect(self._on_became_idle)
+        window.quit_requested.connect(self._on_quit_requested)
 
         # Window starts in LOADING; hotkey enabled only after model is ready
         self._engine.start_loading()
@@ -108,6 +109,10 @@ class _Controller(QObject):
 
     def _on_became_idle(self) -> None:
         self._hotkey.start()
+
+    def _on_quit_requested(self) -> None:
+        logging.debug("Quit requested via close button")
+        QApplication.instance().quit()
 
     def cleanup(self) -> None:
         self._hotkey.stop()
