@@ -10,3 +10,6 @@ venv/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# AI-assisted dev workflow artifacts (kept local, not published)
+research-plan-implement/
