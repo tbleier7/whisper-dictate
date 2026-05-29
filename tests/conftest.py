@@ -51,7 +51,7 @@ def clipboard_capture():
     user's real clipboard is untouched during tests. Exposes the fake
     clipboard and the keyboard mock for assertions.
     """
-    clipboard = _FakeClipboard()
+    clipboard = _FakeClipboard(initial="prior clipboard contents")
     with (
         mock.patch("whisper_dictate.app.keyboard") as mock_keyboard,
         mock.patch(

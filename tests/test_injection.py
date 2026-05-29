@@ -33,3 +33,21 @@ def test_atomic_paste_sets_clipboard_and_emits_single_ctrl_v(qtbot):
     assert clipboard.text() == sentence
     mock_keyboard.send.assert_called_once_with("ctrl+v")
     mock_keyboard.write.assert_not_called()
+
+
+def test_prior_clipboard_is_restored_after_paste(qtbot):
+    clipboard = _FakeClipboard(initial="my earlier clipboard")
+
+    with (
+        mock.patch("whisper_dictate.app.keyboard"),
+        mock.patch(
+            "whisper_dictate.app.QApplication.clipboard", return_value=clipboard
+        ),
+    ):
+        app._paste_text("dictated text")
+        # The transcription is on the clipboard immediately after the paste...
+        assert clipboard.text() == "dictated text"
+        # ...and the prior contents come back once the restore timer fires.
+        qtbot.wait(app._RESTORE_CLIPBOARD_DELAY_MS + 100)
+
+    assert clipboard.text() == "my earlier clipboard"

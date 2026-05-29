@@ -17,6 +17,9 @@ from .model import WhisperEngine
 from .window import AppState, FloatingWindow
 
 _STATE_PORT = 19876
+# Delay before restoring the user's prior clipboard, so the target app has
+# consumed the synthetic Ctrl+V paste before the previous contents return.
+_RESTORE_CLIPBOARD_DELAY_MS = 100
 
 
 def _paste_text(text: str) -> None:
@@ -24,10 +27,15 @@ def _paste_text(text: str) -> None:
 
     Per-character typing (keyboard.write) drops interior spaces and letters
     when the OS input queue can't keep up; one clipboard paste cannot.
+
+    The user's prior clipboard contents are captured first and restored
+    after a short delay, so dictation leaves the clipboard as it found it.
     """
     clipboard = QApplication.clipboard()
+    saved = clipboard.text()
     clipboard.setText(text)
     keyboard.send("ctrl+v")
+    QTimer.singleShot(_RESTORE_CLIPBOARD_DELAY_MS, lambda: clipboard.setText(saved))
 
 
 def _start_state_server(get_state: callable, on_trigger: callable) -> None:

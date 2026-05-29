@@ -30,8 +30,11 @@ def test_text_injected_after_transcription(qtbot, ctrl, clipboard_capture):
     controller._on_chord_pressed()  # RECORDING -> LOADING
 
     controller._on_transcription_done("hello world")
-    qtbot.wait(200)
-    assert clipboard_capture.clipboard.text() == "hello world"
+    # The paste fires ~100 ms after transcription; sample before the restore
+    # timer returns the prior clipboard contents.
+    qtbot.waitUntil(
+        lambda: clipboard_capture.clipboard.text() == "hello world", timeout=1000
+    )
     clipboard_capture.keyboard.send.assert_called_once_with("ctrl+v")
 
 
