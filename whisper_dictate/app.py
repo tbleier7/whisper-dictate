@@ -19,6 +19,17 @@ from .window import AppState, FloatingWindow
 _STATE_PORT = 19876
 
 
+def _paste_text(text: str) -> None:
+    """Deliver text atomically via the clipboard and a single Ctrl+V.
+
+    Per-character typing (keyboard.write) drops interior spaces and letters
+    when the OS input queue can't keep up; one clipboard paste cannot.
+    """
+    clipboard = QApplication.clipboard()
+    clipboard.setText(text)
+    keyboard.send("ctrl+v")
+
+
 def _start_state_server(get_state: callable, on_trigger: callable) -> None:
     def handler_factory(*args, **kwargs):
         class _Handler(BaseHTTPRequestHandler):
@@ -98,11 +109,11 @@ class _Controller(QObject):
 
     def _on_transcription_done(self, text: str) -> None:
         self._window.set_state(AppState.SUCCESS)
-        # 100 ms lets held modifier keys release before SendInput fires.
-        # Hotkey is already stopped (from _on_recording_stopped); it is
+        # 100 ms lets held modifier keys release before the synthetic Ctrl+V
+        # fires. Hotkey is already stopped (from _on_recording_stopped); it is
         # restarted only when the window reaches IDLE via _on_became_idle,
-        # so synthetic keystrokes in the text can never re-trigger recording.
-        QTimer.singleShot(100, lambda: keyboard.write(text, delay=0))
+        # so synthetic keystrokes can never re-trigger recording.
+        QTimer.singleShot(100, lambda: _paste_text(text))
 
     def _on_transcription_failed(self) -> None:
         self._window.set_state(AppState.FAILURE)

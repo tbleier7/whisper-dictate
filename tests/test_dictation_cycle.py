@@ -24,17 +24,18 @@ def ctrl(qtbot, config):
         yield controller, window
 
 
-def test_text_injected_after_transcription(qtbot, ctrl, text_capture):
+def test_text_injected_after_transcription(qtbot, ctrl, clipboard_capture):
     controller, _ = ctrl
     controller._on_chord_pressed()  # IDLE -> RECORDING
     controller._on_chord_pressed()  # RECORDING -> LOADING
 
     controller._on_transcription_done("hello world")
     qtbot.wait(200)
-    assert text_capture.read_text(encoding="utf-8") == "hello world"
+    assert clipboard_capture.clipboard.text() == "hello world"
+    clipboard_capture.keyboard.send.assert_called_once_with("ctrl+v")
 
 
-def test_window_returns_to_idle_after_success(qtbot, ctrl, text_capture):
+def test_window_returns_to_idle_after_success(qtbot, ctrl, clipboard_capture):
     controller, window = ctrl
     controller._on_chord_pressed()
     controller._on_chord_pressed()
@@ -54,7 +55,7 @@ def test_window_returns_to_idle_after_failure(qtbot, ctrl):
     assert window.state == AppState.IDLE
 
 
-def test_new_recording_accepted_after_full_cycle(qtbot, ctrl, text_capture):
+def test_new_recording_accepted_after_full_cycle(qtbot, ctrl, clipboard_capture):
     controller, window = ctrl
     controller._on_chord_pressed()
     controller._on_chord_pressed()
@@ -76,7 +77,7 @@ def test_hotkey_stopped_during_transcription(ctrl):
     mock_hotkey.stop.assert_called_once()
 
 
-def test_hotkey_restarted_after_idle(qtbot, ctrl, text_capture):
+def test_hotkey_restarted_after_idle(qtbot, ctrl, clipboard_capture):
     controller, _ = ctrl
     mock_hotkey = controller._hotkey
 
@@ -122,7 +123,7 @@ def test_hotkey_not_started_when_model_load_fails(qtbot, config):
         controller._hotkey.start.assert_not_called()
 
 
-def test_hotkey_restarted_after_failure_path(qtbot, ctrl, text_capture):
+def test_hotkey_restarted_after_failure_path(qtbot, ctrl, clipboard_capture):
     controller, window = ctrl
     mock_hotkey = controller._hotkey
 
@@ -136,7 +137,7 @@ def test_hotkey_restarted_after_failure_path(qtbot, ctrl, text_capture):
     assert mock_hotkey.start.call_count == 2
 
 
-def test_chord_ignored_during_non_idle_non_recording_states(qtbot, ctrl, text_capture):
+def test_chord_ignored_during_non_idle_non_recording_states(qtbot, ctrl, clipboard_capture):
     controller, window = ctrl
 
     controller._on_chord_pressed()  # IDLE -> RECORDING
