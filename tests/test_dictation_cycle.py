@@ -199,3 +199,42 @@ def test_cleanup_stops_all_subsystems(ctrl):
     controller._hotkey.stop.assert_called()
     controller._recorder.stop.assert_called()
     controller._engine.cleanup.assert_called()
+
+
+def test_transcribe_receives_decode_settings_from_config(ctrl):
+    """Pressing hotkey twice passes a DecodeSettings built from config."""
+    from whisper_dictate.model import DecodeSettings
+
+    controller, _ = ctrl
+    # Set recognisable values on config so we can assert they're forwarded.
+    controller._config.hotwords = {"de": "schaute Scherbe", "en": ""}
+    controller._config.vad_filter = True
+    controller._config.normalize_audio = True
+    controller._config.active_language = "de"
+
+    controller._on_chord_pressed()  # IDLE -> RECORDING
+    controller._on_chord_pressed()  # RECORDING -> LOADING (fires transcribe)
+
+    call_kwargs = controller._engine.transcribe.call_args.kwargs
+    settings = call_kwargs.get("settings")
+    assert settings is not None, "transcribe was not called with a settings= kwarg"
+    assert isinstance(settings, DecodeSettings)
+    assert settings.hotwords == "schaute Scherbe"
+    assert settings.vad_filter is True
+    assert settings.normalize is True
+
+
+def test_transcribe_settings_use_active_language_hotwords(ctrl):
+    """The active language's hotwords slice is extracted, not the full dict."""
+    from whisper_dictate.model import DecodeSettings
+
+    controller, _ = ctrl
+    controller._config.hotwords = {"de": "schaute", "en": "shard"}
+    controller._config.active_language = "en"
+
+    controller._on_chord_pressed()
+    controller._on_chord_pressed()
+
+    settings = controller._engine.transcribe.call_args.kwargs.get("settings")
+    assert isinstance(settings, DecodeSettings)
+    assert settings.hotwords == "shard"

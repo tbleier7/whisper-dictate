@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import QApplication
 from .audio import AudioRecorder
 from .config import Config
 from .hotkey import HotkeyManager
-from .model import WhisperEngine
+from .model import DecodeSettings, WhisperEngine
 from .window import AppState, FloatingWindow
 
 _STATE_PORT = 19876
@@ -113,7 +113,13 @@ class _Controller(QObject):
             self._hotkey.stop()
             audio = self._recorder.stop()
             self._window.set_state(AppState.LOADING)
-            self._engine.transcribe(audio, self._config.active_language)
+            lang = self._config.active_language
+            settings = DecodeSettings(
+                hotwords=self._config.hotwords.get(lang, ""),
+                vad_filter=self._config.vad_filter,
+                normalize=self._config.normalize_audio,
+            )
+            self._engine.transcribe(audio, lang, settings=settings)
 
     def _on_transcription_done(self, text: str) -> None:
         self._window.set_state(AppState.SUCCESS)
