@@ -7,6 +7,21 @@ from PyQt6.QtCore import QObject, pyqtSignal
 _SAMPLE_RATE = 16_000
 _BLOCK_SIZE = 1_024
 _AMP_SCALE = 8.0  # scales RMS to 0–1 range for typical speech levels
+_NORMALIZE_TARGET = 0.95  # target peak level for peak normalization
+
+
+def peak_normalize(audio: np.ndarray) -> np.ndarray:
+    """Scale *audio* so its peak absolute value is approximately 0.95.
+
+    Silent (all-zero) or empty arrays are returned unchanged to avoid
+    divide-by-zero and accidental amplification of noise floors.
+    """
+    if audio.size == 0:
+        return audio
+    peak = float(np.abs(audio).max())
+    if peak == 0.0:
+        return audio
+    return (audio * (_NORMALIZE_TARGET / peak)).astype(audio.dtype)
 
 
 class AudioRecorder(QObject):

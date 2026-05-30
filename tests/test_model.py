@@ -5,7 +5,7 @@ from unittest import mock
 import numpy as np
 import pytest
 
-from whisper_dictate.model import WhisperEngine
+from whisper_dictate.model import WhisperEngine, DecodeSettings
 
 
 def _segment(text: str):
@@ -138,3 +138,58 @@ def test_transcribe_passes_language_to_model(qtbot):
         engine.transcribe(audio, "fr")
 
     assert model.transcribe.call_args.kwargs["language"] == "fr"
+
+
+def test_transcribe_forwards_hotwords_from_decode_settings(qtbot):
+    model = mock.MagicMock()
+    model.transcribe.return_value = ([_segment("schaute")], None)
+    engine = _make_engine_with_loaded_model(qtbot, model)
+
+    audio = np.zeros(16000, dtype=np.float32)
+    settings = DecodeSettings(hotwords="schaute Scherbe", vad_filter=False, normalize=False)
+    with qtbot.waitSignal(engine.transcription_done, timeout=5000):
+        engine.transcribe(audio, "de", settings=settings)
+
+    assert model.transcribe.call_args.kwargs["hotwords"] == "schaute Scherbe"
+
+
+def test_transcribe_forwards_vad_filter_from_decode_settings(qtbot):
+    model = mock.MagicMock()
+    model.transcribe.return_value = ([_segment("ok")], None)
+    engine = _make_engine_with_loaded_model(qtbot, model)
+
+    audio = np.zeros(16000, dtype=np.float32)
+    settings = DecodeSettings(hotwords="", vad_filter=True, normalize=False)
+    with qtbot.waitSignal(engine.transcription_done, timeout=5000):
+        engine.transcribe(audio, "de", settings=settings)
+
+    assert model.transcribe.call_args.kwargs["vad_filter"] is True
+
+
+def test_transcribe_peak_normalizes_audio_when_normalize_is_set(qtbot):
+    model = mock.MagicMock()
+    model.transcribe.return_value = ([_segment("ok")], None)
+    engine = _make_engine_with_loaded_model(qtbot, model)
+
+    # Audio with peak 0.1 — should be scaled to ~0.95 before reaching model
+    audio = np.full(16000, 0.1, dtype=np.float32)
+    settings = DecodeSettings(hotwords="", vad_filter=False, normalize=True)
+    with qtbot.waitSignal(engine.transcription_done, timeout=5000):
+        engine.transcribe(audio, "de", settings=settings)
+
+    forwarded_audio = model.transcribe.call_args.args[0]
+    assert float(np.abs(forwarded_audio).max()) == pytest.approx(0.95, rel=1e-4)
+
+
+def test_transcribe_does_not_normalize_when_normalize_is_false(qtbot):
+    model = mock.MagicMock()
+    model.transcribe.return_value = ([_segment("ok")], None)
+    engine = _make_engine_with_loaded_model(qtbot, model)
+
+    audio = np.full(16000, 0.1, dtype=np.float32)
+    settings = DecodeSettings(hotwords="", vad_filter=False, normalize=False)
+    with qtbot.waitSignal(engine.transcription_done, timeout=5000):
+        engine.transcribe(audio, "de", settings=settings)
+
+    forwarded_audio = model.transcribe.call_args.args[0]
+    assert float(np.abs(forwarded_audio).max()) == pytest.approx(0.1, rel=1e-4)

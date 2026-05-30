@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from dataclasses import dataclass, field
 import numpy as np
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from faster_whisper import WhisperModel
@@ -14,6 +15,15 @@ _MODEL_NAME = "large-v3"
 # large-v3 comfortably in modest VRAM), while int8 is the CPU-optimal type.
 _COMPUTE_TYPE = {"cuda": "float16", "cpu": "int8"}
 _BEAM_SIZE = 5
+
+
+@dataclass
+class DecodeSettings:
+    """Decoder knobs forwarded to faster-whisper at transcription time."""
+
+    hotwords: str = ""
+    vad_filter: bool = False
+    normalize: bool = False
 
 
 def _add_nvidia_dll_dirs() -> None:
@@ -84,16 +94,32 @@ class _TranscribeThread(QThread):
     transcribed = pyqtSignal(str)
     failed = pyqtSignal()
 
-    def __init__(self, model: WhisperModel, audio: np.ndarray, language: str) -> None:
+    def __init__(
+        self,
+        model: WhisperModel,
+        audio: np.ndarray,
+        language: str,
+        settings: DecodeSettings,
+    ) -> None:
         super().__init__()
         self._model = model
         self._audio = audio
         self._language = language
+        self._settings = settings
 
     def run(self) -> None:
+        from whisper_dictate.audio import peak_normalize
+
         try:
+            audio = self._audio
+            if self._settings.normalize:
+                audio = peak_normalize(audio)
             segments, _ = self._model.transcribe(
-                self._audio, language=self._language, beam_size=_BEAM_SIZE
+                audio,
+                language=self._language,
+                beam_size=_BEAM_SIZE,
+                hotwords=self._settings.hotwords or None,
+                vad_filter=self._settings.vad_filter,
             )
             text = "".join(s.text for s in segments).strip()
             if text:
@@ -130,8 +156,15 @@ class WhisperEngine(QObject):
         self._device = device
         self.model_ready.emit(device)
 
-    def transcribe(self, audio: np.ndarray, language: str) -> None:
-        thread = _TranscribeThread(self._model, audio, language)
+    def transcribe(
+        self,
+        audio: np.ndarray,
+        language: str,
+        settings: DecodeSettings | None = None,
+    ) -> None:
+        if settings is None:
+            settings = DecodeSettings()
+        thread = _TranscribeThread(self._model, audio, language, settings)
         thread.transcribed.connect(self.transcription_done)
         thread.failed.connect(self.transcription_failed)
         thread.finished.connect(thread.deleteLater)

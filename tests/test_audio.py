@@ -5,7 +5,7 @@ from unittest import mock
 import numpy as np
 import pytest
 
-from whisper_dictate.audio import AudioRecorder
+from whisper_dictate.audio import AudioRecorder, peak_normalize
 
 
 @pytest.fixture
@@ -94,6 +94,32 @@ def test_stop_closes_stream(qtbot, stream):
 
     instance.stop.assert_called_once()
     instance.close.assert_called_once()
+
+
+def test_peak_normalize_scales_quiet_signal_to_near_095(qtbot):
+    audio = np.full(100, 0.1, dtype=np.float32)
+    result = peak_normalize(audio)
+    assert result.max() == pytest.approx(0.95, rel=1e-4)
+
+
+def test_peak_normalize_leaves_silence_unchanged(qtbot):
+    silence = np.zeros(100, dtype=np.float32)
+    result = peak_normalize(silence)
+    assert np.all(result == 0.0)
+
+
+def test_peak_normalize_leaves_empty_array_unchanged(qtbot):
+    empty = np.zeros(0, dtype=np.float32)
+    result = peak_normalize(empty)
+    assert result.shape == (0,)
+
+
+def test_peak_normalize_does_not_clip_loud_signal(qtbot):
+    # A signal already near peak 1.0 should scale down to 0.95, never exceed 1.0
+    audio = np.full(100, 0.9, dtype=np.float32)
+    result = peak_normalize(audio)
+    assert float(np.abs(result).max()) <= 1.0
+    assert result.max() == pytest.approx(0.95, rel=1e-4)
 
 
 def test_start_after_stop_resets_frames(qtbot, stream):
