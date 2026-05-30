@@ -74,6 +74,66 @@ def hotkey_press() -> str:
         return f"Failed to trigger: {e}"
 
 
+CAL_BASE = "http://127.0.0.1:19876/calibrate"
+
+
+def _cal_post(path: str) -> None:
+    req = urllib.request.Request(f"{CAL_BASE}/{path}", data=b"", method="POST")
+    with urllib.request.urlopen(req, timeout=2):
+        pass
+
+
+def _cal_get(path: str) -> dict:
+    with urllib.request.urlopen(f"{CAL_BASE}/{path}", timeout=2) as r:
+        return json.loads(r.read())
+
+
+@mcp.tool()
+def calibrate_open() -> str:
+    """Open the calibration window. Returns the reference passage the user should read aloud.
+    App must be idle before calling this."""
+    _cal_post("open")
+    data = _cal_get("passage")
+    return f"Calibration window opened. Read this passage aloud:\n\n{data['passage']}"
+
+
+@mcp.tool()
+def calibrate_record(duration_seconds: int = 10) -> str:
+    """Record audio for calibration, then transcribe and score it.
+
+    Starts recording, waits duration_seconds, stops, and returns the WER result.
+    Call calibrate_open() first. duration_seconds should be long enough to read the full passage.
+    """
+    _cal_post("record_start")
+    time.sleep(duration_seconds)
+    _cal_post("record_stop")
+    # Poll until transcription finishes (up to 60 s)
+    for _ in range(60):
+        time.sleep(1)
+        data = _cal_get("state")
+        if data["state"] == "result":
+            break
+    result = _cal_get("result")
+    if "error" in result:
+        return f"Calibration failed: {result['error']}"
+    return (
+        f"WER: {result['wer_pct']}%\n"
+        f"Transcription: {result['transcription']}"
+    )
+
+
+@mcp.tool()
+def calibrate_get_result() -> str:
+    """Return the most recent calibration result (WER and transcription)."""
+    result = _cal_get("result")
+    if "error" in result:
+        return result["error"]
+    return (
+        f"WER: {result['wer_pct']}%\n"
+        f"Transcription: {result['transcription']}"
+    )
+
+
 @mcp.tool()
 def screenshot() -> Image:
     """Capture the floating window. Reads window position from config.json and adds padding."""

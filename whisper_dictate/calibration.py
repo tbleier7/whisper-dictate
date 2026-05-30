@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QLineEdit,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from .config import Config
 from .model import DecodeSettings, WhisperEngine
@@ -30,6 +30,8 @@ class CalibrationWindow(QWidget):
     audio, and save the settings to config.
     """
 
+    result_ready = pyqtSignal(float, str)  # wer, transcription
+
     def __init__(
         self,
         engine: WhisperEngine,
@@ -45,6 +47,7 @@ class CalibrationWindow(QWidget):
         self._setup_ui()
         self.setWindowTitle("Calibration")
         self.resize(640, 520)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -124,15 +127,21 @@ class CalibrationWindow(QWidget):
     # ------------------------------------------------------------------
 
     def _on_record_clicked(self) -> None:
-        from .audio import AudioRecorder
-        import numpy as np
+        if not hasattr(self, "_recorder") or self._recorder is None:
+            self.start_recording()
+        else:
+            self.stop_recording()
 
+    def start_recording(self) -> None:
+        from .audio import AudioRecorder
         if not hasattr(self, "_recorder") or self._recorder is None:
             self._recorder = AudioRecorder(self)
             self._recorder.amplitude_ready.connect(self._on_amplitude)
             self._record_btn.setText("Stop")
             self._recorder.start()
-        else:
+
+    def stop_recording(self) -> None:
+        if hasattr(self, "_recorder") and self._recorder is not None:
             self._recorded_audio = self._recorder.stop()
             self._recorder = None
             self._record_btn.setText("Record")
@@ -181,6 +190,7 @@ class CalibrationWindow(QWidget):
         passage = REFERENCE_PASSAGES.get(self._language, "")
         result = score(passage, text)
         self._render_result(result, text)
+        self.result_ready.emit(result.wer, text)
 
     def _on_failed(self) -> None:
         self._set_buttons_busy(False)
