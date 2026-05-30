@@ -34,6 +34,9 @@ _DEFAULTS: dict = {
     "languages": ["de", "en"],
     "active_language": "de",
     "window_position": {"x": 100, "y": 100},
+    "hotwords": {"de": "", "en": ""},
+    "vad_filter": False,
+    "normalize_audio": False,
 }
 
 
@@ -42,6 +45,9 @@ class Config:
     languages: list[str] = field(default_factory=lambda: ["de", "en"])
     active_language: str = "de"
     window_position: dict = field(default_factory=lambda: {"x": 100, "y": 100})
+    hotwords: dict = field(default_factory=lambda: {"de": "", "en": ""})
+    vad_filter: bool = False
+    normalize_audio: bool = False
 
     @classmethod
     def load(cls) -> "Config":
@@ -54,6 +60,9 @@ class Config:
                     languages=merged["languages"],
                     active_language=merged["active_language"],
                     window_position=merged["window_position"],
+                    hotwords=merged["hotwords"],
+                    vad_filter=merged["vad_filter"],
+                    normalize_audio=merged["normalize_audio"],
                 )
             except Exception:
                 pass

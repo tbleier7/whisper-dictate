@@ -115,3 +115,43 @@ def test_user_config_takes_precedence_over_legacy(tmp_path, monkeypatch):
     monkeypatch.setattr(config_module, "_LEGACY_CONFIG_PATH", legacy)
 
     assert Config.load().active_language == "ja"
+
+
+def test_decode_fields_default_correctly():
+    """hotwords, vad_filter, normalize_audio have correct defaults on a fresh Config."""
+    cfg = Config()
+
+    assert cfg.hotwords == {"de": "", "en": ""}
+    assert cfg.vad_filter is False
+    assert cfg.normalize_audio is False
+
+
+def test_decode_fields_roundtrip_through_save_load(config_path):
+    """hotwords, vad_filter, normalize_audio round-trip through save→load."""
+    cfg = Config(
+        hotwords={"de": "schaute Scherbe", "en": "shard chart"},
+        vad_filter=True,
+        normalize_audio=True,
+    )
+    cfg.save()
+
+    loaded = Config.load()
+
+    assert loaded.hotwords == {"de": "schaute Scherbe", "en": "shard chart"}
+    assert loaded.vad_filter is True
+    assert loaded.normalize_audio is True
+
+
+def test_decode_fields_default_for_legacy_config(config_path):
+    """A config file missing the new decode keys loads with defaults (legacy compat)."""
+    config_path.write_text(
+        json.dumps({"active_language": "en"}),
+        encoding="utf-8",
+    )
+
+    cfg = Config.load()
+
+    assert cfg.active_language == "en"
+    assert cfg.hotwords == {"de": "", "en": ""}
+    assert cfg.vad_filter is False
+    assert cfg.normalize_audio is False
