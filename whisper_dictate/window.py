@@ -3,9 +3,9 @@ from __future__ import annotations
 import enum
 import logging
 import math
-from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout, QHBoxLayout, QMenu
+from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSignal
-from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush, QContextMenuEvent
+from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush
 
 from .config import Config
 
@@ -162,6 +162,17 @@ class _CloseButton(_ClickableLabel):
         self.setToolTip("Quit")
 
 
+class _GearButton(_ClickableLabel):
+    """Narrow calibration button rendered left of the close button."""
+
+    def __init__(self, on_click, parent: QWidget | None = None) -> None:
+        super().__init__(on_click, "⚙", parent)
+        self.setFixedWidth(14)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setStyleSheet("color: #aaaaaa; background: transparent;")
+        self.setToolTip("Calibrate")
+
+
 class FloatingWindow(QWidget):
     became_idle = pyqtSignal()
     quit_requested = pyqtSignal()
@@ -189,7 +200,7 @@ class FloatingWindow(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(140, 44)
+        self.setFixedSize(152, 44)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 4, 6, 4)
@@ -219,6 +230,11 @@ class FloatingWindow(QWidget):
         self._stack.addWidget(self._recording_page)  # index 1
 
         layout.addWidget(self._stack)
+
+        self._gear_button = _GearButton(self.calibrate_requested.emit, self)
+        layout.addWidget(self._gear_button)
+
+        layout.addSpacing(6)
 
         self._close_button = _CloseButton(self.quit_requested.emit, self)
         layout.addWidget(self._close_button)
@@ -307,12 +323,6 @@ class FloatingWindow(QWidget):
         painter.setBrush(QBrush(self._bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(self.rect(), 8, 8)
-
-    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
-        menu = QMenu(self)
-        action = menu.addAction("Calibrate…")
-        action.triggered.connect(self.calibrate_requested.emit)
-        menu.popup(event.globalPos())
 
     def closeEvent(self, event) -> None:
         pos = self.pos()

@@ -24,13 +24,9 @@ class CalibrationDsl:
         """Transition the app into recording state (simulates hotkey press mid-recording)."""
         self._driver.set_app_state(AppState.RECORDING)
 
-    def right_click_dictation_window(self) -> None:
-        """The user right-clicks anywhere on the dictation overlay widget."""
-        self._driver.right_click_label_child()
-
-    def select_calibrate_from_context_menu(self) -> None:
-        """The user clicks 'Calibrate…' in the context menu that appeared."""
-        self._driver.trigger_calibrate_action()
+    def click_gear_button(self) -> None:
+        """The user clicks the gear button on the dictation overlay."""
+        self._driver.click_gear_button()
 
     def assert_calibration_window_is_open(self) -> None:
         assert self._driver.calibration_window_is_visible(), (
@@ -40,13 +36,6 @@ class CalibrationDsl:
     def assert_calibration_window_is_not_open(self) -> None:
         assert not self._driver.calibration_window_is_visible(), (
             "Expected no calibration window, but one was visible."
-        )
-
-    def assert_context_menu_appeared(self) -> None:
-        assert self._driver.context_menu_was_captured(), (
-            "Right-clicking the window did not produce a context menu. "
-            "The QContextMenuEvent did not reach FloatingWindow.contextMenuEvent — "
-            "the event likely did not propagate from the child label widget to the parent."
         )
 
     def assert_global_hotkey_is_disabled(self) -> None:

@@ -3,9 +3,6 @@ from __future__ import annotations
 from unittest import mock
 
 import numpy as np
-from PyQt6.QtCore import QPoint
-from PyQt6.QtGui import QContextMenuEvent
-from PyQt6.QtWidgets import QApplication, QMenu
 
 from whisper_dictate.app import _Controller
 from whisper_dictate.config import Config
@@ -21,7 +18,6 @@ class CalibrationDriver:
         self._controller: _Controller | None = None
         self._window: FloatingWindow | None = None
         self._config: Config | None = None
-        self._captured_menu: QMenu | None = None
 
     # ------------------------------------------------------------------
     # App lifecycle
@@ -54,40 +50,9 @@ class CalibrationDriver:
     # Gesture simulation
     # ------------------------------------------------------------------
 
-    def right_click_label_child(self) -> None:
-        """Send QContextMenuEvent to the label child widget.
-
-        Tests that the event propagates up to FloatingWindow — the path an
-        actual mouse right-click travels through the Qt widget hierarchy.
-        """
-        target = self._window._label
-        event = QContextMenuEvent(
-            QContextMenuEvent.Reason.Mouse,
-            QPoint(target.width() // 2, target.height() // 2),
-        )
-        captured: dict = {}
-
-        def patched_popup(menu_self, pos, *args):
-            captured["menu"] = menu_self
-
-        with mock.patch.object(QMenu, "popup", patched_popup):
-            QApplication.sendEvent(target, event)
-
-        self._captured_menu = captured.get("menu")
-
-    def trigger_calibrate_action(self) -> None:
-        assert self._captured_menu is not None, (
-            "No menu captured — call right_click_label_child() first"
-        )
-        calibrate = next(
-            (a for a in self._captured_menu.actions() if "Calibrate" in a.text()),
-            None,
-        )
-        assert calibrate is not None, (
-            f"No 'Calibrate…' action; menu has: "
-            f"{[a.text() for a in self._captured_menu.actions()]}"
-        )
-        calibrate.trigger()
+    def click_gear_button(self) -> None:
+        """Click the gear (calibrate) button on the floating window."""
+        self._window._gear_button._on_click()
         self._qtbot.wait(50)
 
     # ------------------------------------------------------------------
@@ -150,5 +115,3 @@ class CalibrationDriver:
     def config_normalize_audio(self) -> bool:
         return self._config.normalize_audio
 
-    def context_menu_was_captured(self) -> bool:
-        return self._captured_menu is not None

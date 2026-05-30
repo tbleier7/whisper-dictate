@@ -27,7 +27,7 @@ def window(qtbot, config):
 
 
 def test_window_size(window):
-    assert window.width() == 140
+    assert window.width() == 152
     assert window.height() == 44
 
 
@@ -82,35 +82,15 @@ def test_close_button_emits_quit_requested(qtbot, window):
         window._close_button._on_click()
 
 
-def test_context_menu_emits_calibrate_requested(qtbot, window):
-    """Right-clicking the floating window shows a menu whose 'Calibrate…' action emits calibrate_requested."""
-    from PyQt6.QtGui import QContextMenuEvent
-    from PyQt6.QtCore import QPoint
-    from PyQt6.QtWidgets import QMenu
-
+def test_gear_button_emits_calibrate_requested(qtbot, window):
+    """Clicking the gear button emits calibrate_requested."""
     window.set_state(AppState.IDLE)
-    event = QContextMenuEvent(
-        QContextMenuEvent.Reason.Mouse,
-        QPoint(window.width() // 2, window.height() // 2),
-    )
-    # Intercept QMenu.popup so it doesn't actually show, capture the menu.
-    captured = {}
-
-    original_popup = QMenu.popup
-    def fake_popup(self_menu, pos, *args):
-        captured["menu"] = self_menu
-    with mock.patch.object(QMenu, "popup", fake_popup):
-        window.contextMenuEvent(event)
-
-    assert "menu" in captured, "contextMenuEvent did not call menu.popup"
-    menu = captured["menu"]
-    actions = menu.actions()
-    assert len(actions) == 1
-    assert actions[0].text() == "Calibrate…"
-
-    # Trigger the action and verify the signal fires.
     with qtbot.waitSignal(window.calibrate_requested, timeout=1000):
-        actions[0].trigger()
+        window._gear_button._on_click()
+
+
+def test_gear_button_tooltip_is_calibrate(window):
+    assert window._gear_button.toolTip() == "Calibrate"
 
 
 def test_close_button_tooltip_is_quit(window):
