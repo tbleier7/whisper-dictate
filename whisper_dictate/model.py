@@ -161,12 +161,18 @@ class WhisperEngine(QObject):
         audio: np.ndarray,
         language: str,
         settings: DecodeSettings | None = None,
+        on_result: callable | None = None,
+        on_failed: callable | None = None,
     ) -> None:
         if settings is None:
             settings = DecodeSettings()
         thread = _TranscribeThread(self._model, audio, language, settings)
-        thread.transcribed.connect(self.transcription_done)
-        thread.failed.connect(self.transcription_failed)
+        if on_result is not None:
+            thread.transcribed.connect(on_result)
+            thread.failed.connect(on_failed if on_failed is not None else lambda: None)
+        else:
+            thread.transcribed.connect(self.transcription_done)
+            thread.failed.connect(self.transcription_failed)
         thread.finished.connect(thread.deleteLater)
         self._active_thread = thread
         thread.start()

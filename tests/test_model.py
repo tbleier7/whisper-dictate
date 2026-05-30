@@ -193,3 +193,33 @@ def test_transcribe_does_not_normalize_when_normalize_is_false(qtbot):
 
     forwarded_audio = model.transcribe.call_args.args[0]
     assert float(np.abs(forwarded_audio).max()) == pytest.approx(0.1, rel=1e-4)
+
+
+def test_transcribe_with_on_result_delivers_text_to_callback_not_signal(qtbot):
+    """on_result callback receives text; transcription_done must NOT fire."""
+    model = mock.MagicMock()
+    model.transcribe.return_value = ([_segment("calibration text")], None)
+    engine = _make_engine_with_loaded_model(qtbot, model)
+
+    received: list[str] = []
+    audio = np.zeros(16000, dtype=np.float32)
+    with qtbot.assertNotEmitted(engine.transcription_done, wait=2000):
+        engine.transcribe(audio, "de", on_result=received.append)
+        qtbot.waitUntil(lambda: len(received) == 1, timeout=5000)
+
+    assert received == ["calibration text"]
+
+
+def test_transcribe_with_on_failed_invokes_callback_not_signal(qtbot):
+    """on_failed callback is invoked on empty result; transcription_failed must NOT fire."""
+    model = mock.MagicMock()
+    model.transcribe.return_value = ([], None)  # empty → failed
+    engine = _make_engine_with_loaded_model(qtbot, model)
+
+    failed_calls: list[int] = []
+    audio = np.zeros(16000, dtype=np.float32)
+    with qtbot.assertNotEmitted(engine.transcription_failed, wait=2000):
+        engine.transcribe(audio, "de", on_result=lambda t: None, on_failed=lambda: failed_calls.append(1))
+        qtbot.waitUntil(lambda: len(failed_calls) == 1, timeout=5000)
+
+    assert len(failed_calls) == 1
