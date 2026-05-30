@@ -246,6 +246,7 @@ def main() -> None:
     _setup_logging()
     config = Config.load()
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     window = FloatingWindow(config)
     window.show()
 
