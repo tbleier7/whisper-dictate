@@ -112,3 +112,15 @@ def test_save_persists_hotwords_vad_and_normalization_to_config(app):
     app.assert_config_hotwords_for("de", "schaute Scherbe")
     app.assert_config_vad_filter(True)
     app.assert_config_normalize_audio(True)
+
+
+# ---------------------------------------------------------------------------
+# Closing calibration does not close the whole app
+# ---------------------------------------------------------------------------
+
+def test_closing_calibration_does_not_close_the_app(app):
+    """Closing the calibration window leaves the main floating window running."""
+    app.launch_idle()
+    app.click_gear_button()
+    app.close_calibration()
+    app.assert_main_window_is_still_running()

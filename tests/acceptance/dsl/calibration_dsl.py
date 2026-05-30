@@ -97,3 +97,9 @@ class CalibrationDsl:
         assert actual == expected, (
             f"Expected config.normalize_audio = {expected}, got {actual}"
         )
+
+    def assert_main_window_is_still_running(self) -> None:
+        assert self._driver.main_window_is_visible(), (
+            "Expected the main floating window to still be visible after closing "
+            "the calibration window, but it was not."
+        )

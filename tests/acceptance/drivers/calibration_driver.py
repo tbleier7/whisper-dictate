@@ -4,6 +4,8 @@ from unittest import mock
 
 import numpy as np
 
+from PyQt6.QtWidgets import QApplication
+
 from whisper_dictate.app import _Controller
 from whisper_dictate.config import Config
 from whisper_dictate.window import AppState, FloatingWindow
@@ -25,6 +27,7 @@ class CalibrationDriver:
 
     def build_idle_app_stack(self, config: Config) -> None:
         self._config = config
+        QApplication.instance().setQuitOnLastWindowClosed(False)
         patches = [
             mock.patch("whisper_dictate.app.WhisperEngine"),
             mock.patch("whisper_dictate.app.AudioRecorder"),
@@ -37,6 +40,7 @@ class CalibrationDriver:
 
         self._window = FloatingWindow(config)
         self._qtbot.addWidget(self._window)
+        self._window.show()
         self._controller = _Controller(config, self._window)
         self._controller._on_model_ready("cuda")
         self._controller._hotkey.reset_mock()
@@ -114,4 +118,7 @@ class CalibrationDriver:
 
     def config_normalize_audio(self) -> bool:
         return self._config.normalize_audio
+
+    def main_window_is_visible(self) -> bool:
+        return self._window is not None and self._window.isVisible()
 
