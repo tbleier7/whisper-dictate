@@ -3,9 +3,9 @@ from __future__ import annotations
 import enum
 import logging
 import math
-from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout, QHBoxLayout, QMenu
 from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSignal
-from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush
+from PyQt6.QtGui import QPainter, QPen, QColor, QPaintEvent, QMouseEvent, QBrush, QContextMenuEvent
 
 from .config import Config
 
@@ -165,6 +165,7 @@ class _CloseButton(_ClickableLabel):
 class FloatingWindow(QWidget):
     became_idle = pyqtSignal()
     quit_requested = pyqtSignal()
+    calibrate_requested = pyqtSignal()
 
     def __init__(self, config: Config) -> None:
         super().__init__()
@@ -306,6 +307,12 @@ class FloatingWindow(QWidget):
         painter.setBrush(QBrush(self._bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(self.rect(), 8, 8)
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        menu = QMenu(self)
+        action = menu.addAction("Calibrate…")
+        action.triggered.connect(self.calibrate_requested.emit)
+        menu.popup(event.globalPos())
 
     def closeEvent(self, event) -> None:
         pos = self.pos()

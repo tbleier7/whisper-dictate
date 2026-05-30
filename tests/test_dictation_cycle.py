@@ -238,3 +238,61 @@ def test_transcribe_settings_use_active_language_hotwords(ctrl):
     settings = controller._engine.transcribe.call_args.kwargs.get("settings")
     assert isinstance(settings, DecodeSettings)
     assert settings.hotwords == "shard"
+
+
+def test_calibrate_requested_while_idle_stops_hotkey(qtbot, ctrl):
+    """calibrate_requested while idle stops the global hotkey."""
+    controller, window = ctrl
+    mock_hotkey = controller._hotkey
+    mock_hotkey.stop.reset_mock()
+
+    # Patch CalibrationWindow so it doesn't actually open a real window.
+    with mock.patch("whisper_dictate.app.CalibrationWindow") as MockCalWin:
+        MockCalWin.return_value.show = mock.Mock()
+        window.calibrate_requested.emit()
+
+    mock_hotkey.stop.assert_called()
+
+
+def test_calibrate_requested_ignored_when_not_idle(qtbot, ctrl):
+    """calibrate_requested while recording is silently ignored."""
+    controller, window = ctrl
+    mock_hotkey = controller._hotkey
+    mock_hotkey.stop.reset_mock()
+
+    controller._on_chord_pressed()  # IDLE -> RECORDING
+    assert window.state == AppState.RECORDING
+
+    stop_count_before = mock_hotkey.stop.call_count
+    with mock.patch("whisper_dictate.app.CalibrationWindow"):
+        window.calibrate_requested.emit()
+
+    # stop should not have been called again for calibration
+    assert mock_hotkey.stop.call_count == stop_count_before
+
+
+def test_hotkey_restarted_when_calibration_window_closes(qtbot, ctrl):
+    """Closing the calibration window re-enables the global hotkey."""
+    controller, window = ctrl
+    mock_hotkey = controller._hotkey
+    mock_hotkey.start.reset_mock()
+
+    cal_win_instance = None
+
+    def capture_cal_win(*args, **kwargs):
+        nonlocal cal_win_instance
+        cal_win_instance = mock.MagicMock()
+        cal_win_instance.show = mock.Mock()
+        # Wire destroyed signal so controller can reconnect
+        from PyQt6.QtCore import QObject, pyqtSignal
+        return cal_win_instance
+
+    with mock.patch("whisper_dictate.app.CalibrationWindow", side_effect=capture_cal_win):
+        window.calibrate_requested.emit()
+
+    assert cal_win_instance is not None
+    # Simulate the window being closed: controller should restart hotkey
+    # The controller connects to cal_win.destroyed or closeEvent; simulate via close callback
+    controller._on_calibration_closed()
+
+    mock_hotkey.start.assert_called()

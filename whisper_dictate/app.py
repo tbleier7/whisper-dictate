@@ -11,6 +11,7 @@ from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 from .audio import AudioRecorder
+from .calibration import CalibrationWindow
 from .config import Config
 from .hotkey import HotkeyManager
 from .model import DecodeSettings, WhisperEngine
@@ -92,6 +93,9 @@ class _Controller(QObject):
         self._engine.transcription_failed.connect(self._on_transcription_failed)
         window.became_idle.connect(self._on_became_idle)
         window.quit_requested.connect(self._on_quit_requested)
+        window.calibrate_requested.connect(self._on_calibrate_requested)
+
+        self._cal_window: CalibrationWindow | None = None
 
         # Window starts in LOADING; hotkey enabled only after model is ready
         self._engine.start_loading()
@@ -133,6 +137,18 @@ class _Controller(QObject):
         self._window.set_state(AppState.FAILURE)
 
     def _on_became_idle(self) -> None:
+        self._hotkey.start()
+
+    def _on_calibrate_requested(self) -> None:
+        if self._window.state != AppState.IDLE:
+            return
+        self._hotkey.stop()
+        self._cal_window = CalibrationWindow(self._engine, self._config)
+        self._cal_window.destroyed.connect(self._on_calibration_closed)
+        self._cal_window.show()
+
+    def _on_calibration_closed(self) -> None:
+        self._cal_window = None
         self._hotkey.start()
 
     def _on_quit_requested(self) -> None:
